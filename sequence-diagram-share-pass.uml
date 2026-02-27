@@ -1,0 +1,56 @@
+@startuml
+autonumber
+skinparam Style strictuml
+skinparam MaxMessageSize 200
+
+actor "Usuario A (Emisor)" as UserA
+participant "App A (Local)" as AppA
+box "Infraestructura Segura" #F9F9F9
+    participant "Servidor API" as Server
+    database "Base de Datos" as DB
+end box
+participant "App B (Local)" as AppB
+actor "Usuario B (Receptor)" as UserB
+
+== Fase 1: Registro de Usuarios ==
+
+UserB -> AppB: Ingresa número (+34600...)
+AppB -> AppB: Genera Par de Claves (Pública/Privada)
+AppB -> AppB: Guarda Clave Privada en Secure Enclave
+AppB -> AppB: Pre-Hash: SHA256(Teléfono + Salt_Público)
+AppB -> Server: Envía [ID_Temporal, Clave_Pública_B]
+
+note over Server: El servidor nunca ve el\nteléfono en texto plano
+
+Server -> Server: Hash Final: Argon2id(ID_Temporal + Pepper_Secreto)
+Server -> DB: Guarda [Hash_Final, Clave_Pública_B]
+Server --> AppB: Registro completado
+
+== Fase 2: Descubrimiento y Compartición ==
+
+UserA -> AppA: "Quiero compartir con +34600..."
+AppA -> AppA: Pre-Hash: SHA256(Teléfono_B + Salt_Público)
+AppA -> Server: ¿Existe usuario con ID_Temporal_B?
+
+Server -> DB: Busca Hash_Final que coincida (Argon2 verify)
+DB --> Server: Encontrado: Clave_Pública_B
+Server --> AppA: Entrega Clave_Pública_B
+
+note over AppA: Cifrado de Extremo a Extremo
+AppA -> AppA: Cifra Contraseña con Clave_Pública_B
+AppA -> Server: Envía [Paquete_Cifrado] para Usuario B
+Server -> DB: Almacena temporalmente el paquete
+
+== Fase 3: Recepción y Descifrado ==
+
+UserB -> AppB: Abre la App
+AppB -> Server: ¿Tengo mensajes nuevos?
+Server -> DB: Recupera Paquete_Cifrado
+DB --> Server: Datos cifrados
+Server --> AppB: Entrega Paquete_Cifrado
+
+AppB -> AppB: Extrae Clave Privada del Secure Enclave
+AppB -> AppB: Descifra Contraseña
+AppB -> UserB: Muestra: "Contraseña de Netflix: 1234"
+
+@enduml
