@@ -30,12 +30,12 @@ import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.runtime.LaunchedEffect
+import com.locked.lockedin.repository.VaultRepository
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.screen.*
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
-import com.locked.lockedin.ui.viewmodel.AuthViewModel
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.screen.UnlockScreen
@@ -43,8 +43,6 @@ import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
 import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
 
 object NavigationRoutes {
-    const val LOGIN = "login"
-    const val REGISTER = "register"
     const val SETUP = "setup"
     const val UNLOCK = "unlock"
     // Anter MAIN = "main"
@@ -78,7 +76,7 @@ fun PasswordManagerNavigation(
     biometricKeyManager: BiometricKeyManager,
     passwordViewModel: PasswordViewModel,
     groupViewModel: GroupViewModel,
-    authViewModel: AuthViewModel,
+    vaultRepository: VaultRepository,
     activity: FragmentActivity,
     modifier: Modifier = Modifier
 ) {
@@ -95,7 +93,6 @@ fun PasswordManagerNavigation(
 
     // Choose where to start
     val startDestination = when {
-        !authViewModel.isLoggedIn -> NavigationRoutes.LOGIN
         !masterKeyManager.isMasterKeySet() -> NavigationRoutes.SETUP
         VaultKeyHolder.isUnlocked -> NavigationRoutes.MAIN
         else -> NavigationRoutes.UNLOCK
@@ -144,54 +141,11 @@ fun PasswordManagerNavigation(
             startDestination = startDestination,
             modifier = modifier.padding(contentPadding)
         ) {
-            // ── Auth screens ────────────────────────────────────────────
-
-            composable(NavigationRoutes.LOGIN) {
-                LoginScreen(
-                    viewModel = authViewModel,
-                    onLoginSuccess = {
-                        navController.navigate(
-                            if (masterKeyManager.isMasterKeySet()) NavigationRoutes.UNLOCK
-                            else NavigationRoutes.SETUP
-                        ) {
-                            popUpTo(NavigationRoutes.LOGIN) { inclusive = true }
-                        }
-                    },
-                    onNavigateToRegister = {
-                        authViewModel.clearState()
-                        navController.navigate(NavigationRoutes.REGISTER) {
-                            popUpTo(NavigationRoutes.LOGIN) { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-            composable(NavigationRoutes.REGISTER) {
-                RegisterScreen(
-                    viewModel = authViewModel,
-                    onRegisterSuccess = {
-                        navController.navigate(
-                            if (masterKeyManager.isMasterKeySet()) NavigationRoutes.UNLOCK
-                            else NavigationRoutes.SETUP
-                        ) {
-                            popUpTo(NavigationRoutes.REGISTER) { inclusive = true }
-                        }
-                    },
-                    onNavigateToLogin = {
-                        authViewModel.clearState()
-                        navController.navigate(NavigationRoutes.LOGIN) {
-                            popUpTo(NavigationRoutes.REGISTER) { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-            // ── Local vault setup ───────────────────────────────────────────
-
             composable(NavigationRoutes.SETUP) {
                 val setupViewModel = remember {
                     SetupViewModel(
                         masterKeyManager = masterKeyManager,
+                        vaultRepository  = vaultRepository,
                         onKeyDerived = onKeyDerived
                     )
                 }
@@ -212,6 +166,7 @@ fun PasswordManagerNavigation(
                 val unlockViewModel = remember {
                     UnlockViewModel(
                         masterKeyManager = masterKeyManager,
+                        vaultRepository  = vaultRepository,
                         onKeyDerived = onKeyDerived
                     )
                 }

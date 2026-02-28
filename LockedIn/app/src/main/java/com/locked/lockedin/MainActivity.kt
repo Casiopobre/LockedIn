@@ -25,8 +25,6 @@ import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.GroupViewModelFactory
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
-import com.locked.lockedin.ui.viewmodel.AuthViewModel
-import com.locked.lockedin.ui.viewmodel.AuthViewModelFactory
 
 class MainActivity : FragmentActivity() {
 
@@ -60,9 +58,6 @@ class MainActivity : FragmentActivity() {
                     val groupViewModel: GroupViewModel = viewModel(
                         factory = GroupViewModelFactory(vaultRepository)
                     )
-                    val authViewModel: AuthViewModel = viewModel(
-                        factory = AuthViewModelFactory(vaultRepository)
-                    )
 
                     val navController = rememberNavController()
 
@@ -72,7 +67,7 @@ class MainActivity : FragmentActivity() {
                         biometricKeyManager = biometricKeyManager,
                         passwordViewModel   = passwordViewModel,
                         groupViewModel      = groupViewModel,
-                        authViewModel       = authViewModel,
+                        vaultRepository     = vaultRepository,
                         activity            = this@MainActivity
                     )
                 }
