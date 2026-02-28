@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "change-me"
     PEPPER: str = "change-me"
+    PEPPER2: str = "change-me-too"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 

@@ -6,7 +6,8 @@
 > con los datos devueltos por peticiones anteriores.
 >
 > **⚠️ Si vienes de una versión anterior**, el schema de la tabla `users` ha
-> cambiado (nueva columna `id_lookup`, `password_hash` ahora almacena Argon2).
+> cambiado (nueva columna `id_lookup`, `password_hash` ahora almacena Argon2
+> sobre el SHA-256 del cliente + PEPPER2).
 > Recrea la DB:
 > ```bash
 > docker compose down -v && docker compose up --build
@@ -24,14 +25,17 @@ curl -s http://localhost:8000/health | python3 -m json.tool
 
 ## 1. Registro de usuario 1
 
-El `password_hash` es un SHA-256 de 64 caracteres (simulado aquí con un hash fijo).
+El `user_id` es el número de teléfono del usuario. El `password_hash` es el
+SHA-256 de la contraseña maestra, calculado en el cliente. El servidor nunca
+ve la contraseña en claro (zero-knowledge). El backend aplica Argon2id + PEPPER2
+sobre este hash.
 
 ```bash
 curl -s -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "alice",
-    "password_hash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+    "user_id": "666111222",
+    "password_hash": "2dd9f649063164ed47425c17ce5bd705c2273f877f8b89d2952958506ea3cdd9",
     "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3VS5JJcds3xfn/ygWe\nFGHKZOSauLkjJDBMnmG4qiiAnKmGT1FzNJt8ycWj4eCOoeq6GWhVU/0F9bEMPQym\nR50jwJKxNHyqIwwIvoBSn5RtQbEBIaFjR5d3xgfO1sIu7OqYfzCRiMOFQZ7N01A0\nshjKEeLqZIhw4+lv4Ly3NL4RLRfOP53ISJv9Z2BbZsFv4FZME40zSlbRvHKuzFb/\nO+Yvz7BOmTMGJGVqY+ItOMjx/MpVUVulMb0tN0w3GNDJtQ3MhZ3m2fXP+flFKIjM\nkz+7/R2CqzFk5WFEOHJCC6yS8eSEM+kHl94xdH2dTlRTdezj1YbGIJwfvQ1EXAMPLE\nwQIDAQAB\n-----END PUBLIC KEY-----"
   }' | python3 -m json.tool
 ```
@@ -44,22 +48,22 @@ curl -s -X POST http://localhost:8000/auth/register \
 curl -s -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "bob",
-    "password_hash": "6cf615d5bcaac778352a8f1f3360d23f02f34ec182e259897fd6ce485d7870d4",
+    "user_id": "666333444",
+    "password_hash": "b9f6996bdcad773042e43796c497a6af674657412bdca82f3a0f15b098d71dc7",
     "public_key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEBxyz1234567890abcdef\nBOBKEYEXAMPLEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nwQIDAQAB\n-----END PUBLIC KEY-----"
   }' | python3 -m json.tool
 ```
 
 ---
 
-## 3. Login de usuario 1 (alice)
+## 3. Login de usuario 1
 
 ```bash
 curl -s -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "alice",
-    "password_hash": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+    "user_id": "666111222",
+    "password_hash": "2dd9f649063164ed47425c17ce5bd705c2273f877f8b89d2952958506ea3cdd9"
   }' | python3 -m json.tool
 ```
 
@@ -70,14 +74,14 @@ curl -s -X POST http://localhost:8000/auth/login \
 
 ---
 
-## 4. Login de usuario 2 (bob)
+## 4. Login de usuario 2
 
 ```bash
 curl -s -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "bob",
-    "password_hash": "6cf615d5bcaac778352a8f1f3360d23f02f34ec182e259897fd6ce485d7870d4"
+    "user_id": "666333444",
+    "password_hash": "b9f6996bdcad773042e43796c497a6af674657412bdca82f3a0f15b098d71dc7"
   }' | python3 -m json.tool
 ```
 
@@ -88,19 +92,19 @@ curl -s -X POST http://localhost:8000/auth/login \
 
 ---
 
-## 5. Obtener clave pública de bob (como alice)
+## 5. Obtener clave pública de usuario 2 (como usuario 1)
 
 ```bash
-curl -s http://localhost:8000/auth/public-key/bob \
+curl -s http://localhost:8000/auth/public-key/666333444 \
   -H "Authorization: Bearer $TOKEN_ALICE" \
   | python3 -m json.tool
 ```
 
 ---
 
-## 6. Crear un grupo (como alice)
+## 6. Crear un grupo (como usuario 1)
 
-Alice crea un grupo y sube su SGK cifrada con su propia clave pública.
+Usuario 1 crea un grupo y sube su SGK cifrada con su propia clave pública.
 
 ```bash
 curl -s -X POST http://localhost:8000/groups/ \
@@ -119,7 +123,7 @@ curl -s -X POST http://localhost:8000/groups/ \
 
 ---
 
-## 7. Listar mis grupos (como alice)
+## 7. Listar mis grupos (como usuario 1)
 
 ```bash
 curl -s http://localhost:8000/groups/ \
@@ -129,25 +133,25 @@ curl -s http://localhost:8000/groups/ \
 
 ---
 
-## 8. Añadir a bob al grupo (como alice)
+## 8. Añadir a usuario 2 al grupo (como usuario 1)
 
-Alice cifra la SGK con la clave pública de bob y la sube.
+Usuario 1 cifra la SGK con la clave pública de usuario 2 y la sube.
 
 ```bash
 curl -s -X POST "http://localhost:8000/groups/$GROUP_ID/members" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN_ALICE" \
   -d '{
-    "user_id": "bob",
+    "user_id": "666333444",
     "encrypted_sgk": "base64-sgk-cifrada-con-pubkey-bob-EXAMPLE=="
   }' | python3 -m json.tool
 ```
 
 ---
 
-## 9. Obtener mi SGK cifrada (como bob)
+## 9. Obtener mi SGK cifrada (como usuario 2)
 
-Bob recupera su copia de la SGK (cifrada con su pubkey).
+Usuario 2 recupera su copia de la SGK (cifrada con su pubkey).
 
 ```bash
 curl -s "http://localhost:8000/groups/$GROUP_ID/sgk" \
@@ -157,7 +161,7 @@ curl -s "http://localhost:8000/groups/$GROUP_ID/sgk" \
 
 ---
 
-## 10. Listar mis grupos (como bob)
+## 10. Listar mis grupos (como usuario 2)
 
 ```bash
 curl -s http://localhost:8000/groups/ \
@@ -167,9 +171,9 @@ curl -s http://localhost:8000/groups/ \
 
 ---
 
-## 11. Compartir una contraseña en el grupo (como alice)
+## 11. Compartir una contraseña en el grupo (como usuario 1)
 
-Alice sube una contraseña cifrada con la SGK del grupo.
+Usuario 1 sube una contraseña cifrada con la SGK del grupo.
 
 ```bash
 curl -s -X POST "http://localhost:8000/groups/$GROUP_ID/passwords" \
@@ -188,9 +192,9 @@ curl -s -X POST "http://localhost:8000/groups/$GROUP_ID/passwords" \
 
 ---
 
-## 12. Listar contraseñas del grupo (como bob)
+## 12. Listar contraseñas del grupo (como usuario 2)
 
-Bob puede ver las contraseñas cifradas (las descifra localmente con la SGK).
+Usuario 2 puede ver las contraseñas cifradas (las descifra localmente con la SGK).
 
 ```bash
 curl -s "http://localhost:8000/groups/$GROUP_ID/passwords" \
@@ -200,7 +204,7 @@ curl -s "http://localhost:8000/groups/$GROUP_ID/passwords" \
 
 ---
 
-## 13. Actualizar una contraseña (como alice)
+## 13. Actualizar una contraseña (como usuario 1)
 
 ```bash
 curl -s -X PATCH "http://localhost:8000/groups/$GROUP_ID/passwords/$PASSWORD_ID" \
@@ -214,7 +218,7 @@ curl -s -X PATCH "http://localhost:8000/groups/$GROUP_ID/passwords/$PASSWORD_ID"
 
 ---
 
-## 14. Borrar una contraseña (como alice)
+## 14. Borrar una contraseña (como usuario 1)
 
 ```bash
 curl -s -X DELETE "http://localhost:8000/groups/$GROUP_ID/passwords/$PASSWORD_ID" \
@@ -226,7 +230,7 @@ curl -s -X DELETE "http://localhost:8000/groups/$GROUP_ID/passwords/$PASSWORD_ID
 
 ---
 
-## 15. Verificar que la contraseña fue borrada (como bob)
+## 15. Verificar que la contraseña fue borrada (como usuario 2)
 
 ```bash
 curl -s "http://localhost:8000/groups/$GROUP_ID/passwords" \
