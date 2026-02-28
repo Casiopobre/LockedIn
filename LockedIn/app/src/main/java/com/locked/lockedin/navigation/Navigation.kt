@@ -35,10 +35,11 @@ import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.screen.*
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.screen.UnlockScreen
+import com.locked.lockedin.ui.viewmodel.SettingsViewModel
 import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
 import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
 
@@ -81,6 +82,7 @@ fun PasswordManagerNavigation(
     groupViewModel: GroupViewModel,
     vaultRepository: VaultRepository,
     activity: FragmentActivity,
+    settingsViewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -249,7 +251,10 @@ fun PasswordManagerNavigation(
 
             // Settings
             composable(NavigationRoutes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = settingsViewModel
+                )
             }
 
             // Add password as a Dialog
@@ -335,7 +340,7 @@ fun PasswordManagerNavigation(
 @Preview(showBackground = true)
 @Composable
 fun NavigationPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         val navController = rememberNavController()
         val context = LocalContext.current
         val masterKeyManager = remember { MasterKeyManager(context) }

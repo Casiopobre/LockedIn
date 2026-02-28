@@ -24,10 +24,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.locks.Lock
 
 /**
  * Composable for displaying a password entry item in the list.
@@ -134,7 +135,7 @@ private fun borderStroke() = androidx.compose.foundation.BorderStroke(
 @Preview(showBackground = true)
 @Composable
 fun PasswordItemPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         Column(
             modifier = Modifier
                 .padding(16.dp)

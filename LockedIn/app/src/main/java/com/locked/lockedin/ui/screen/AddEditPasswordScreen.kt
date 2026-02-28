@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.R
 import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.ui.theme.LockedInTheme
 import com.locked.lockedin.security.CryptoManager
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 
 /**
@@ -610,7 +610,7 @@ private fun borderStroke() = BorderStroke(
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun AddEditPasswordScreenPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         AddEditPasswordContent(
             title                    = "google.com",
             username                 = "user@gmail.com",

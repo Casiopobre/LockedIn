@@ -27,9 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.ui.component.PasswordItem
+import com.locked.lockedin.ui.theme.LockedInTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.GroupPasswordItem
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 
@@ -506,8 +508,8 @@ private fun ActionSmallButton(
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun ManageGroupScreenPreview() {
-    PasswordManagerTheme {
-        ManageGroupScreenContent(
+    LockedInTheme() {
+        ManageGroupScreen(
             groupName = "Grupiño chulo",
             passwords = listOf(
                 GroupPasswordItem("1", "g1", "u1", "GitHub", "s3cr3t", "2026-01-01", "2026-01-01"),
