@@ -1,7 +1,9 @@
-package com.locked.lockedin.ui.viewmodel
+package com.yourname.passwordmanager.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.locked.lockedin.security.BiometricKeyManager
+import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.ui.screen.PasswordStrength
 import kotlinx.coroutines.Dispatchers
@@ -9,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.crypto.Cipher
 
 // ============================================================
 // SetupViewModel — first-time master key creation
@@ -71,10 +74,10 @@ class SetupViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
                 withContext(Dispatchers.Default) {
-                    // PBKDF2 is intentionally slow — run off the main thread
                     masterKeyManager.setupMasterKey(state.masterKey)
                 }
                 // Derive and cache the encryption key in memory
+                // VaultKeyHolder now holds the key — enableBiometricAfterSetup can use it
                 onKeyDerived(state.masterKey)
                 _uiState.value = _uiState.value.copy(isSetupComplete = true)
             } catch (e: Exception) {
@@ -84,6 +87,11 @@ class SetupViewModel(
                 )
             }
         }
+    }
+
+    fun enableBiometricAfterSetup(biometricKeyManager: BiometricKeyManager, cipher: Cipher) {
+        val vaultKey = VaultKeyHolder.requireKey()
+        biometricKeyManager.encryptAndSaveKey(cipher, vaultKey)  // use authenticated cipher
     }
 
     private fun validate(state: SetupUiState): Boolean {
@@ -164,11 +172,11 @@ class UnlockViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             val isValid = withContext(Dispatchers.Default) {
-                // PBKDF2 verification is intentionally slow — off main thread
                 masterKeyManager.verifyMasterKey(key)
             }
             if (isValid) {
                 // Derive and cache the encryption key in memory
+                // VaultKeyHolder now holds the key — enableBiometric can use it
                 onKeyDerived(key)
                 _uiState.value = _uiState.value.copy(isUnlocked = true)
             } else {
@@ -180,5 +188,17 @@ class UnlockViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Call this AFTER unlock() completes (i.e. after isUnlocked == true)
+     * when the user wants to enable biometric unlock for the first time
+     * from a settings screen or similar.
+     *
+     * At this point onKeyDerived() has already run, so VaultKeyHolder holds the key.
+     */
+    fun enableBiometric(biometricKeyManager: BiometricKeyManager, cipher: Cipher) {
+        val vaultKey = VaultKeyHolder.requireKey()
+        biometricKeyManager.encryptAndSaveKey(cipher, vaultKey)
     }
 }
