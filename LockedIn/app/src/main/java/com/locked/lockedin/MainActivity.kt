@@ -15,7 +15,6 @@ import com.locked.lockedin.navigation.PasswordManagerNavigation
 import com.locked.lockedin.repository.PasswordRepository
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.MasterKeyManager
-import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
