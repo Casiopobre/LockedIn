@@ -35,25 +35,29 @@ import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.screen.*
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.viewmodel.AuthViewModel
+import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.screen.UnlockScreen
 import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
 import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
 
 object NavigationRoutes {
+    const val LOGIN = "login"
+    const val REGISTER = "register"
     const val SETUP = "setup"
     const val UNLOCK = "unlock"
     // Anter MAIN = "main"
     const val MAIN = "my_passwords"
     const val GROUPS = "my_groups"
     const val ADD_GROUP = "add_group"
-    const val MANAGE_GROUP = "manage_group/{groupName}"
+    const val MANAGE_GROUP = "manage_group/{groupId}/{groupName}"
     const val SETTINGS = "settings"
     const val ADD_PASSWORD = "add_password"
     const val EDIT_PASSWORD = "edit_password/{passwordId}"
 
     fun editPassword(passwordId: Long) = "edit_password/$passwordId"
-    fun manageGroup(groupName: String) = "manage_group/$groupName"
+    fun manageGroup(groupId: String, groupName: String) = "manage_group/$groupId/$groupName"
 }
 
 enum class Destination(
@@ -73,6 +77,8 @@ fun PasswordManagerNavigation(
     masterKeyManager: MasterKeyManager,
     biometricKeyManager: BiometricKeyManager,
     passwordViewModel: PasswordViewModel,
+    groupViewModel: GroupViewModel,
+    authViewModel: AuthViewModel,
     activity: FragmentActivity,
     modifier: Modifier = Modifier
 ) {
@@ -89,6 +95,7 @@ fun PasswordManagerNavigation(
 
     // Choose where to start
     val startDestination = when {
+        !authViewModel.isLoggedIn -> NavigationRoutes.LOGIN
         !masterKeyManager.isMasterKeySet() -> NavigationRoutes.SETUP
         VaultKeyHolder.isUnlocked -> NavigationRoutes.MAIN
         else -> NavigationRoutes.UNLOCK
@@ -137,6 +144,50 @@ fun PasswordManagerNavigation(
             startDestination = startDestination,
             modifier = modifier.padding(contentPadding)
         ) {
+            // ── Auth screens ────────────────────────────────────────────
+
+            composable(NavigationRoutes.LOGIN) {
+                LoginScreen(
+                    viewModel = authViewModel,
+                    onLoginSuccess = {
+                        navController.navigate(
+                            if (masterKeyManager.isMasterKeySet()) NavigationRoutes.UNLOCK
+                            else NavigationRoutes.SETUP
+                        ) {
+                            popUpTo(NavigationRoutes.LOGIN) { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        authViewModel.clearState()
+                        navController.navigate(NavigationRoutes.REGISTER) {
+                            popUpTo(NavigationRoutes.LOGIN) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(NavigationRoutes.REGISTER) {
+                RegisterScreen(
+                    viewModel = authViewModel,
+                    onRegisterSuccess = {
+                        navController.navigate(
+                            if (masterKeyManager.isMasterKeySet()) NavigationRoutes.UNLOCK
+                            else NavigationRoutes.SETUP
+                        ) {
+                            popUpTo(NavigationRoutes.REGISTER) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        authViewModel.clearState()
+                        navController.navigate(NavigationRoutes.LOGIN) {
+                            popUpTo(NavigationRoutes.REGISTER) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // ── Local vault setup ───────────────────────────────────────────
+
             composable(NavigationRoutes.SETUP) {
                 val setupViewModel = remember {
                     SetupViewModel(
@@ -193,11 +244,12 @@ fun PasswordManagerNavigation(
             // Groups
             composable(NavigationRoutes.GROUPS) {
                 GroupsScreen(
+                    groupViewModel = groupViewModel,
                     onAddGroupClick = {
                         navController.navigate(NavigationRoutes.ADD_GROUP)
                     },
                     onGroupClick = { group ->
-                        navController.navigate(NavigationRoutes.manageGroup(group.name))
+                        navController.navigate(NavigationRoutes.manageGroup(group.id, group.name))
                     }
                 )
             }
@@ -205,11 +257,17 @@ fun PasswordManagerNavigation(
             // Manage Group
             composable(
                 route = NavigationRoutes.MANAGE_GROUP,
-                arguments = listOf(navArgument("groupName") { type = NavType.StringType })
+                arguments = listOf(
+                    navArgument("groupId") { type = NavType.StringType },
+                    navArgument("groupName") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
+                val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
                 val groupName = backStackEntry.arguments?.getString("groupName") ?: ""
                 ManageGroupScreen(
+                    groupId = groupId,
                     groupName = groupName,
+                    groupViewModel = groupViewModel,
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -277,11 +335,21 @@ fun PasswordManagerNavigation(
                 route = NavigationRoutes.ADD_GROUP,
                 dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
+                val groupUiState by groupViewModel.uiState.collectAsState()
+
                 AddGroupScreen(
-                    onDismiss = { navController.popBackStack() },
-                    onSave = { _ ->
-                        // TODO: Implement actual saving logic when GroupViewModel is ready
+                    onDismiss = {
+                        groupViewModel.clearMessages()
                         navController.popBackStack()
+                    },
+                    isLoading = groupUiState.isLoading,
+                    errorMessage = groupUiState.errorMessage,
+                    onSave = { groupName ->
+                        groupViewModel.createGroup(groupName) { result ->
+                            if (result.isSuccess) {
+                                navController.popBackStack()
+                            }
+                        }
                     }
                 )
             }
@@ -296,7 +364,7 @@ fun NavigationPreview() {
         val navController = rememberNavController()
         val context = LocalContext.current
         val masterKeyManager = remember { MasterKeyManager(context) }
-        
+
         Scaffold(
             bottomBar = {
                 NavigationBar {
