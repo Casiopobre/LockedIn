@@ -20,10 +20,19 @@ import com.locked.lockedin.security.PwnedCheckManager
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
+import com.locked.lockedin.ui.viewmodel.SettingsViewModel
+import androidx.activity.viewModels
 
 class MainActivity : FragmentActivity() {
 
+    // Instancia el ViewModel a nivel de clase, no dentro de onCreate
+    private val settingsViewModel: SettingsViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Ahora sí puedes llamar los métodos de instancia
+        settingsViewModel.applyCurrentTheme()
+        settingsViewModel.applyCurrentLanguage()
+
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -34,13 +43,11 @@ class MainActivity : FragmentActivity() {
                 ) {
                     val context = applicationContext
 
-                    // Security
                     val masterKeyManager    = remember { MasterKeyManager(context) }
                     val cryptoManager       = remember { CryptoManager() }
                     val biometricKeyManager = remember { BiometricKeyManager(context) }
                     val pwnedCheckManager   = remember { PwnedCheckManager(context) }
 
-                    // Database & repository
                     val database   = remember { PasswordDatabase.getDatabase(context) }
                     val repository = remember { PasswordRepository(database.passwordDao(), cryptoManager) }
 

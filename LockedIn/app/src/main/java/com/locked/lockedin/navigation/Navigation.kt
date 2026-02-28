@@ -216,7 +216,9 @@ fun PasswordManagerNavigation(
 
             // Settings
             composable(NavigationRoutes.SETTINGS) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             // Add password as a Dialog
