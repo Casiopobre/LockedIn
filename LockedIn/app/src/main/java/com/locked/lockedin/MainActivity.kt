@@ -1,7 +1,6 @@
 package com.locked.lockedin
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +16,7 @@ import com.locked.lockedin.repository.PasswordRepository
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.MasterKeyManager
+import com.locked.lockedin.security.PwnedCheckManager
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
@@ -30,7 +30,7 @@ class MainActivity : FragmentActivity() {
             PasswordManagerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color    = MaterialTheme.colorScheme.background
                 ) {
                     val context = applicationContext
 
@@ -38,14 +38,14 @@ class MainActivity : FragmentActivity() {
                     val masterKeyManager    = remember { MasterKeyManager(context) }
                     val cryptoManager       = remember { CryptoManager() }
                     val biometricKeyManager = remember { BiometricKeyManager(context) }
+                    val pwnedCheckManager   = remember { PwnedCheckManager(context) }
 
                     // Database & repository
                     val database   = remember { PasswordDatabase.getDatabase(context) }
                     val repository = remember { PasswordRepository(database.passwordDao(), cryptoManager) }
 
-                    // ViewModel
                     val passwordViewModel: PasswordViewModel = viewModel(
-                        factory = PasswordViewModelFactory(repository)
+                        factory = PasswordViewModelFactory(repository, pwnedCheckManager)
                     )
 
                     val navController = rememberNavController()
