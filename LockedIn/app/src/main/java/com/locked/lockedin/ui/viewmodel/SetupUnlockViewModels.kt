@@ -2,10 +2,12 @@ package com.yourname.passwordmanager.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.locked.lockedin.repository.VaultRepository
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.ui.screen.PasswordStrength
+import com.locked.lockedin.ui.viewmodel.HARDCODED_USER_ID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,7 @@ data class SetupUiState(
 
 class SetupViewModel(
     private val masterKeyManager: MasterKeyManager,
+    private val vaultRepository: VaultRepository,
     private val onKeyDerived: (masterKey: String) -> Unit
 ) : ViewModel() {
 
@@ -73,11 +76,26 @@ class SetupViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
+                // 1. Create the local vault
                 withContext(Dispatchers.Default) {
                     masterKeyManager.setupMasterKey(state.masterKey)
                 }
-                // Derive and cache the encryption key in memory
-                // VaultKeyHolder now holds the key — enableBiometricAfterSetup can use it
+
+                // 2. Register on the backend (generates RSA keys + SHA-256 hash)
+                try {
+                    vaultRepository.register(HARDCODED_USER_ID, state.masterKey)
+                    // 3. Auto-login to get a JWT
+                    vaultRepository.login(HARDCODED_USER_ID, state.masterKey)
+                } catch (e: Exception) {
+                    // Registration may fail if user already exists (409) — try login only
+                    try {
+                        vaultRepository.login(HARDCODED_USER_ID, state.masterKey)
+                    } catch (_: Exception) {
+                        // Network unavailable — vault still works locally
+                    }
+                }
+
+                // 4. Derive and cache the encryption key in memory
                 onKeyDerived(state.masterKey)
                 _uiState.value = _uiState.value.copy(isSetupComplete = true)
             } catch (e: Exception) {
@@ -151,6 +169,7 @@ data class UnlockUiState(
 
 class UnlockViewModel(
     private val masterKeyManager: MasterKeyManager,
+    private val vaultRepository: VaultRepository,
     private val onKeyDerived: (masterKey: String) -> Unit
 ) : ViewModel() {
 
@@ -176,8 +195,13 @@ class UnlockViewModel(
             }
             if (isValid) {
                 // Derive and cache the encryption key in memory
-                // VaultKeyHolder now holds the key — enableBiometric can use it
                 onKeyDerived(key)
+
+                // Login on the backend (fire-and-forget — vault still works locally)
+                try {
+                    vaultRepository.login(HARDCODED_USER_ID, key)
+                } catch (_: Exception) { /* offline is OK */ }
+
                 _uiState.value = _uiState.value.copy(isUnlocked = true)
             } else {
                 _uiState.value = _uiState.value.copy(

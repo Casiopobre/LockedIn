@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 object ApiClient {
 
     /** Default base URL for the emulator (10.0.2.2 → host localhost). */
-    private const val DEFAULT_BASE_URL = "http://10.0.2.2:8000/"
+    private const val DEFAULT_BASE_URL = "http://10.50.159.189:8000/"
 
     @Volatile
     private var baseUrl: String = DEFAULT_BASE_URL

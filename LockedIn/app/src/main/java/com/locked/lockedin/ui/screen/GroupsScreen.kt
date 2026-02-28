@@ -23,28 +23,43 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.viewmodel.GroupViewModel
 
 /**
  * Groups screen displaying the list of password groups
  */
 @Composable
 fun GroupsScreen(
+    groupViewModel: GroupViewModel,
     onAddGroupClick: () -> Unit,
     onGroupClick: (GroupItemData) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // For now, using local state as there is no GroupViewModel yet
     var searchQuery by remember { mutableStateOf("") }
-    val groups = listOf(
-        GroupItemData(1, "Grupiño chulo", "You", 13),
-        GroupItemData(2, "Grupiño chulo", "You", 13),
-        GroupItemData(3, "Grupiño chulo", "You", 13)
-    )
+    val groups by groupViewModel.groups.collectAsState()
+    val uiState by groupViewModel.uiState.collectAsState()
+
+    // Load groups on first composition
+    LaunchedEffect(Unit) {
+        groupViewModel.loadGroups()
+    }
+
+    // Map API model to UI model
+    val groupItems = groups.map { g ->
+        GroupItemData(
+            id = g.id,
+            name = g.name,
+            ownerId = g.ownerId
+        )
+    }.let { list ->
+        if (searchQuery.isBlank()) list
+        else list.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
     GroupsScreenContent(
-        groups = groups,
+        groups = groupItems,
         searchQuery = searchQuery,
-        isLoading = false,
+        isLoading = uiState.isLoading,
         onSearchQueryChange = { searchQuery = it },
         onAddGroupClick = onAddGroupClick,
         onGroupClick = onGroupClick,
@@ -53,13 +68,12 @@ fun GroupsScreen(
 }
 
 /**
- * Data class for Group Item
+ * Data class for Group Item (UI model)
  */
 data class GroupItemData(
-    val id: Int,
+    val id: String,
     val name: String,
-    val owner: String,
-    val passwordCount: Int
+    val ownerId: String
 )
 
 /**
@@ -167,9 +181,9 @@ fun GroupsScreenContent(
                         )
                     }
                 }
-                
+
                 Spacer(Modifier.width(16.dp))
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { /* TODO */ }
@@ -194,16 +208,14 @@ fun GroupsScreenContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Groups, 
-                        contentDescription = null, 
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(Modifier.width(16.dp))
                 Text("Group name", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                Text("Owner", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(60.dp), textAlign = TextAlign.Center)
-                Text("N° passwords", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(90.dp), textAlign = TextAlign.Center)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -273,24 +285,6 @@ fun GroupItem(group: GroupItemData, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
-
-            // Owner
-            Text(
-                text = group.owner,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(60.dp),
-                textAlign = TextAlign.Center
-            )
-
-            // Count
-            Text(
-                text = group.passwordCount.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(90.dp),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -301,9 +295,9 @@ fun GroupsScreenPreview() {
     PasswordManagerTheme {
         GroupsScreenContent(
             groups = listOf(
-                GroupItemData(1, "Grupiño chulo", "You", 13),
-                GroupItemData(2, "Grupiño chulo", "You", 13),
-                GroupItemData(3, "Grupiño chulo", "You", 13)
+                GroupItemData("1", "Grupiño chulo", "owner-1"),
+                GroupItemData("2", "Grupiño chulo", "owner-2"),
+                GroupItemData("3", "Grupiño chulo", "owner-3")
             ),
             searchQuery = "",
             isLoading = false,
