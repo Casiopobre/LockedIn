@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,6 +25,7 @@ import androidx.fragment.app.FragmentActivity
 import com.locked.lockedin.security.BiometricHelper
 import com.locked.lockedin.security.BiometricKeyManager
 import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
+import com.locked.lockedin.R
 
 /**
  * First-launch screen where the user creates their master key.
@@ -58,11 +60,11 @@ fun SetupScreen(
                 onSetupComplete()
             },
             icon    = { Icon(Icons.Default.Lock, contentDescription = null) },
-            title   = { Text("Enable Biometric Unlock?") },
+            title   = { Text(stringResource(R.string.enable_biometric_unlock_question)) },
             text    = {
                 Text(
-                    "Use your fingerprint or face to unlock the vault " +
-                            "instead of typing your master key each time.",
+                    stringResource(R.string.biometric_unlock_msg_pt1) +
+                            stringResource(R.string.biometric_unlock_msg_pt2),
                     textAlign = TextAlign.Center
                 )
             },
@@ -74,8 +76,8 @@ fun SetupScreen(
                     // Step 2: show BiometricPrompt with that cipher
                     BiometricHelper.showPrompt(
                         activity = activity,
-                        title = "Enable Biometric Unlock",
-                        subtitle = "Authenticate to save your vault key",
+                        title = activity.getString(R.string.enable_biometric_unlock_title),
+                        subtitle = activity.getString(R.string.authenticate_msg),
                         cryptoObject = BiometricPrompt.CryptoObject(cipher),
                         onSuccess = { authenticatedCipher ->
                             // Step 3: now we have an authorized cipher — encrypt & save
@@ -89,13 +91,13 @@ fun SetupScreen(
                             onSetupComplete()
                         }
                     )
-                }) { Text("Enable") }
+                }) { Text(stringResource(R.string.enable_btn)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showBiometricDialog = false
                     onSetupComplete()
-                }) { Text("Skip") }
+                }) { Text(stringResource(R.string.skip_btn)) }
             }
         )
     }
@@ -124,7 +126,7 @@ fun SetupScreen(
 
             // Title
             Text(
-                text = "Create Your Master Key",
+                text = stringResource(R.string.master_key_creation_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -134,8 +136,8 @@ fun SetupScreen(
 
             // Subtitle
             Text(
-                text = "Your master key encrypts all your passwords. " +
-                        "Choose something strong — it cannot be recovered if lost.",
+                text = stringResource(R.string.master_key_warning_message_pt1) +
+                        stringResource(R.string.master_key_warning_message_pt2),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -147,8 +149,8 @@ fun SetupScreen(
             MasterKeyField(
                 value = uiState.masterKey,
                 onValueChange = viewModel::onMasterKeyChange,
-                label = "Master Key",
-                placeholder = "Enter your master key",
+                label = stringResource(R.string.master_key_field_title),
+                placeholder = stringResource((R.string.master_key_field_input)),
                 isVisible = uiState.isMasterKeyVisible,
                 onToggleVisibility = viewModel::toggleMasterKeyVisibility,
                 isError = uiState.masterKeyError != null,
@@ -168,8 +170,8 @@ fun SetupScreen(
             MasterKeyField(
                 value = uiState.confirmKey,
                 onValueChange = viewModel::onConfirmKeyChange,
-                label = "Confirm Master Key",
-                placeholder = "Re-enter your master key",
+                label = stringResource(R.string.confirm_master_key_field_title),
+                placeholder = stringResource(R.string.confirm_master_key_field_input),
                 isVisible = uiState.isConfirmKeyVisible,
                 onToggleVisibility = viewModel::toggleConfirmKeyVisibility,
                 isError = uiState.confirmKeyError != null,
@@ -213,7 +215,7 @@ fun SetupScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Create Vault", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.create_vault_txt), style = MaterialTheme.typography.labelLarge)
                 }
             }
 
@@ -221,8 +223,8 @@ fun SetupScreen(
 
             // Warning
             Text(
-                text = "⚠️ There is no way to recover your master key. " +
-                        "If you forget it, all saved passwords will be lost.",
+                text = stringResource(R.string.master_key_loss_warning_pt1) +
+                        stringResource(R.string.mastere_key_loss_warning_pt2),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.error
@@ -271,16 +273,16 @@ private fun MasterKeyField(
 private fun PasswordStrengthIndicator(strength: PasswordStrength) {
     val (label, color, progress) = when (strength) {
         PasswordStrength.WEAK -> Triple(
-            "Weak", MaterialTheme.colorScheme.error, 0.25f
+            stringResource(R.string.weak_label), MaterialTheme.colorScheme.error, 0.25f
         )
         PasswordStrength.FAIR -> Triple(
-            "Fair", MaterialTheme.colorScheme.tertiary, 0.5f
+            stringResource(R.string.fair_label), MaterialTheme.colorScheme.tertiary, 0.5f
         )
         PasswordStrength.GOOD -> Triple(
-            "Good", MaterialTheme.colorScheme.secondary, 0.75f
+            stringResource(R.string.good_label), MaterialTheme.colorScheme.secondary, 0.75f
         )
         PasswordStrength.STRONG -> Triple(
-            "Strong", MaterialTheme.colorScheme.primary, 1f
+            stringResource(R.string.strong_label), MaterialTheme.colorScheme.primary, 1f
         )
     }
 
@@ -290,7 +292,7 @@ private fun PasswordStrengthIndicator(strength: PasswordStrength) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Strength",
+                text = stringResource(R.string.password_strength),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

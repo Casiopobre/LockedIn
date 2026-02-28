@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import com.locked.lockedin.R
 import com.locked.lockedin.security.BiometricHelper
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
@@ -77,11 +79,11 @@ fun UnlockScreen(
                 onUnlockSuccess()
             },
             icon    = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
-            title   = { Text("Enable Biometric Unlock?") },
+            title   = { Text(stringResource(R.string.enable_biometric_unlock_question)) },
             text    = {
                 Text(
-                    "Next time, skip typing your master key and unlock " +
-                            "with your fingerprint or face instead.",
+                    stringResource(R.string.biometric_unlock_msg_pt1) +
+                            stringResource(R.string.biometric_unlock_msg_pt2),
                     textAlign = TextAlign.Center
                 )
             },
@@ -93,8 +95,8 @@ fun UnlockScreen(
                     // Step 2: show BiometricPrompt with that cipher
                     BiometricHelper.showPrompt(
                         activity = activity,
-                        title = "Enable Biometric Unlock",
-                        subtitle = "Authenticate to save your vault key",
+                        title = activity.getString(R.string.enable_biometric_unlock_title),
+                        subtitle = activity.getString(R.string.authenticate_msg),
                         cryptoObject = BiometricPrompt.CryptoObject(cipher),
                         onSuccess = { authenticatedCipher ->
                             // Step 3: encrypt & save with the authorized cipher
@@ -107,13 +109,13 @@ fun UnlockScreen(
                             onUnlockSuccess()
                         }
                     )
-                }) { Text("Enable") }
+                }) { Text(stringResource(R.string.enable_btn)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showEnrollBiometricDialog = false
                     onUnlockSuccess()
-                }) { Text("Not now") }
+                }) { Text(stringResource(R.string.not_now_btn)) }
             }
         )
     }
@@ -139,7 +141,7 @@ fun UnlockScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text       = "Welcome Back",
+                text       = stringResource(R.string.welcome_back_msg),
                 style      = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign  = TextAlign.Center
@@ -148,7 +150,7 @@ fun UnlockScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text  = "Enter your master key to unlock your vault.",
+                text  = stringResource(R.string.enter_masterkey_login_msg),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -160,8 +162,8 @@ fun UnlockScreen(
             OutlinedTextField(
                 value               = uiState.masterKey,
                 onValueChange       = viewModel::onMasterKeyChange,
-                label               = { Text("Master Key") },
-                placeholder         = { Text("Enter your master key") },
+                label               = { Text(stringResource(R.string.master_key_field_title)) },
+                placeholder         = { Text(stringResource(R.string.master_key_field_input)) },
                 visualTransformation = if (uiState.isKeyVisible) VisualTransformation.None
                 else PasswordVisualTransformation(),
                 trailingIcon        = {
@@ -178,9 +180,9 @@ fun UnlockScreen(
                     {
                         Text(
                             if (uiState.failedAttempts >= 3)
-                                "Wrong master key (${uiState.failedAttempts} failed attempts)"
+                                stringResource(R.string.too_many_incorrect_master_key_msg)
                             else
-                                "Incorrect master key. Please try again."
+                                stringResource(R.string.incorrect_master_key_msg)
                         )
                     }
                 } else null,
@@ -206,7 +208,7 @@ fun UnlockScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Unlock", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.unlock_txt), style = MaterialTheme.typography.labelLarge)
                 }
             }
 
@@ -236,7 +238,7 @@ fun UnlockScreen(
                             modifier        = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Use Biometric", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.use_biometric_txt), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

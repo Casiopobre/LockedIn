@@ -84,10 +84,10 @@ fun AddEditPasswordScreen(
                     passwordEntry?.let { entry ->
                         viewModel.deletePassword(entry) { onNavigateBack() }
                     }
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete_confirm_btn), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel_btn_title)) }
             }
         )
     }
@@ -145,7 +145,7 @@ private fun AddEditPasswordContent(
                         decorationBox = { innerTextField ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box {
-                                    if (title.isEmpty()) Text("site_name", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                    if (title.isEmpty()) Text(stringResource(R.string.site_name_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     innerTextField()
                                 }
                             }
@@ -173,9 +173,8 @@ private fun AddEditPasswordContent(
             Spacer(modifier = Modifier.height(32.dp))
 
             FormSection(
-                label = "Login info",
+                label = stringResource(R.string.login_info_form_section_title),
                 value = username,
-                subLabel = "Email, tel ...",
                 icon = Icons.Default.Edit,
                 onValueChange = onUsernameChange
             )
@@ -183,9 +182,8 @@ private fun AddEditPasswordContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             FormSection(
-                label = "Password",
-                value = if (isPasswordVisible) password else "••••••••",
-                subLabel = "Tap to reveal",
+                label = stringResource(R.string.password_form_section_title),
+                value = if (isPasswordVisible) password else "•••••••••••••",
                 icon = Icons.Default.Edit,
                 onValueChange = onPasswordChange,
                 innerIcon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -196,7 +194,7 @@ private fun AddEditPasswordContent(
 
             // Groups section
             Text(
-                text = "Groups",
+                text = stringResource(R.string.groups_form_section_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
@@ -215,7 +213,7 @@ private fun AddEditPasswordContent(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "None", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.no_groups_placeholder), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -293,7 +291,7 @@ private fun AddEditPasswordContent(
                             Icon(Icons.Default.DeleteOutline, contentDescription = null)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Delete password",
+                                text = stringResource(R.string.delete_password_btn_txt),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -315,7 +313,7 @@ private fun AddEditPasswordContent(
                                 RoundedCornerShape(24.dp)
                             )
                     ) {
-                        Text("Save New Password", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.save_new_password_txt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -327,7 +325,6 @@ private fun AddEditPasswordContent(
 private fun FormSection(
     label: String,
     value: String,
-    subLabel: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onIconClick: () -> Unit = {},
     onValueChange: (String) -> Unit,
