@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,12 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.locked.lockedin.R
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
@@ -269,8 +273,8 @@ private fun AddEditPasswordContent(
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
                     Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
+                        painter = painterResource(id = R.drawable.shield_locked_24),
+                        contentDescription = "Locked Shield",
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(6.dp))
@@ -379,78 +383,6 @@ private fun AddEditPasswordContent(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // ── Groups section ────────────────────────────────────────────────
-            Text(
-                text       = "Groups",
-                style      = MaterialTheme.typography.titleMedium,
-                color      = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape    = RoundedCornerShape(15.dp),
-                    color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border   = borderStroke(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text  = "None",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                IconButton(
-                    onClick  = { },
-                    modifier = Modifier.border(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        CircleShape
-                    )
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "View group",
-                        tint               = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick  = { },
-                    modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-                            CircleShape
-                        )
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
-                            CircleShape
-                        )
-                ) {
-                    Icon(
-                        Icons.Default.DeleteOutline,
-                        contentDescription = "Delete from group",
-                        tint               = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.height(32.dp))
 
             // ── Bottom actions ────────────────────────────────────────────────
             Row(
