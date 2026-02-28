@@ -1,9 +1,13 @@
 """
 Security helpers
 ~~~~~~~~~~~~~~~~
-- HMAC-SHA256  → deterministic `id_lookup` for O(1) indexed DB queries.
-- Argon2       → slow hash for `id_hash` (defence-in-depth) **and** `password_hash`.
+- HMAC-SHA256  → deterministic `id_lookup` for O(1) indexed DB queries (uses PEPPER).
+- Argon2       → slow hash for `id_hash` (defence-in-depth, uses PEPPER)
+                 **and** `password_hash` (uses PEPPER2).
 - JWT          → session tokens.
+
+PEPPER  is used exclusively for user-ID operations (lookup + defence-in-depth hash).
+PEPPER2 is used exclusively for password hashing.
 """
 
 import hashlib
@@ -53,16 +57,22 @@ def verify_id(user_id: str, id_hash: str) -> bool:
         return False
 
 
-# Password helpers (server-side Argon2 over client SHA-256)
+# Password helpers (server-side Argon2 over client-side SHA-256 + PEPPER2)
 def hash_password(sha256_from_client: str) -> str:
-    """Hash the client-provided SHA-256 digest with Argon2."""
-    return ph.hash(sha256_from_client)
+    """Argon2id hash of SHA-256(password) + PEPPER2.
+
+    The client computes SHA-256 of the master password and sends that digest.
+    The server never sees the plaintext password (zero-knowledge).
+    """
+    peppered = f"{sha256_from_client}{settings.PEPPER2}"
+    return ph.hash(peppered)
 
 
 def verify_password(sha256_from_client: str, stored_hash: str) -> bool:
-    """Verify client SHA-256 against the server-side Argon2 hash."""
+    """Verify a client-provided SHA-256 digest against the stored Argon2 hash."""
     try:
-        return ph.verify(stored_hash, sha256_from_client)
+        peppered = f"{sha256_from_client}{settings.PEPPER2}"
+        return ph.verify(stored_hash, peppered)
     except VerifyMismatchError:
         return False
 
