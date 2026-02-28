@@ -1,4 +1,4 @@
-package com.yourname.passwordmanager.ui.viewmodel
+package com.locked.lockedin.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
