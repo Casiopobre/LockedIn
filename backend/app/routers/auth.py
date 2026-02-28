@@ -64,6 +64,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         id_lookup=compute_id_lookup(body.user_id),
         id_hash=hash_id(body.user_id),
         password_hash=hash_password(body.password_hash),
+
         public_key=body.public_key,
     )
     db.add(user)

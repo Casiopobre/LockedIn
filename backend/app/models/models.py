@@ -4,7 +4,7 @@ SQLAlchemy ORM models for the password vault.
 Tables
 ------
 - users            : id_lookup (HMAC-SHA256, indexed), id_hash (Argon2),
-                     password_hash (Argon2 over client SHA-256), public key
+                     password_hash (Argon2 over client SHA-256 + PEPPER2), public key
 - groups           : password-sharing groups
 - group_members    : M2M with the encrypted SGK per member
 - group_passwords  : passwords encrypted with SGK
@@ -42,7 +42,7 @@ class User(Base):
     # Argon2(user_id + pepper) — defence-in-depth verification after lookup
     id_hash = Column(String(512), nullable=False)
 
-    # Argon2( SHA-256 from client ) — server-side slow hash
+    # Argon2( SHA-256_from_client + PEPPER2 ) — server-side slow hash
     password_hash = Column(String(512), nullable=False)
 
     # RSA / EC public key in PEM or base64
