@@ -1,7 +1,13 @@
 """
-Security helpers: Argon2 hashing with pepper, JWT creation / verification.
+Security helpers
+~~~~~~~~~~~~~~~~
+- HMAC-SHA256  → deterministic `id_lookup` for O(1) indexed DB queries.
+- Argon2       → slow hash for `id_hash` (defence-in-depth) **and** `password_hash`.
+- JWT          → session tokens.
 """
 
+import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 
 from argon2 import PasswordHasher
@@ -22,17 +28,24 @@ ph = PasswordHasher()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-# ── Argon2 helpers ──────────────────────────────────────────────────────────
+# ID helpers
+def compute_id_lookup(user_id: str) -> str:
+    """Deterministic HMAC-SHA256(user_id, PEPPER) for indexed O(1) lookup."""
+    return hmac.new(
+        settings.PEPPER.encode(),
+        user_id.encode(),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def hash_id(user_id: str) -> str:
-    """Hash the user-supplied ID with Argon2 + server pepper."""
+    """Argon2 hash of user_id+pepper (defence-in-depth, NOT used for lookup)."""
     salted = f"{user_id}{settings.PEPPER}"
     return ph.hash(salted)
 
 
 def verify_id(user_id: str, id_hash: str) -> bool:
-    """Verify a plaintext user ID against its Argon2 hash."""
+    """Verify a plaintext user ID against its Argon2 id_hash."""
     try:
         salted = f"{user_id}{settings.PEPPER}"
         return ph.verify(id_hash, salted)
@@ -40,9 +53,21 @@ def verify_id(user_id: str, id_hash: str) -> bool:
         return False
 
 
-# ── JWT helpers ─────────────────────────────────────────────────────────────
+# Password helpers (server-side Argon2 over client SHA-256)
+def hash_password(sha256_from_client: str) -> str:
+    """Hash the client-provided SHA-256 digest with Argon2."""
+    return ph.hash(sha256_from_client)
 
 
+def verify_password(sha256_from_client: str, stored_hash: str) -> bool:
+    """Verify client SHA-256 against the server-side Argon2 hash."""
+    try:
+        return ph.verify(stored_hash, sha256_from_client)
+    except VerifyMismatchError:
+        return False
+
+
+# JWT helpers
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -60,9 +85,7 @@ def decode_access_token(token: str) -> str | None:
         return None
 
 
-# ── FastAPI dependency ──────────────────────────────────────────────────────
-
-
+# FastAPI dependency
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),

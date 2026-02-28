@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import get_current_user, verify_id
+from app.core.security import compute_id_lookup, get_current_user, verify_id
 from app.models.models import Group, GroupMember, GroupPassword, User
 from app.schemas.groups import (
     AddMemberRequest,
@@ -26,9 +26,7 @@ from app.schemas.groups import (
 router = APIRouter(prefix="/groups", tags=["groups"])
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
-
-
+# Helpers
 async def _get_group_or_404(group_id: UUID, db: AsyncSession) -> Group:
     result = await db.execute(select(Group).where(Group.id == group_id))
     group = result.scalar_one_or_none()
@@ -50,9 +48,7 @@ async def _require_membership(group_id: UUID, user_id: UUID, db: AsyncSession) -
     return member
 
 
-# ── Create group ────────────────────────────────────────────────────────────
-
-
+# Create group
 @router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_group(
     body: GroupCreateRequest,
@@ -81,9 +77,7 @@ async def create_group(
     return group
 
 
-# ── List my groups ──────────────────────────────────────────────────────────
-
-
+# List my groups
 @router.get("/", response_model=list[GroupListItem])
 async def list_my_groups(
     db: AsyncSession = Depends(get_db),
@@ -108,9 +102,7 @@ async def list_my_groups(
     ]
 
 
-# ── Add member ──────────────────────────────────────────────────────────────
-
-
+# Add member
 @router.post("/{group_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
 async def add_member(
     group_id: UUID,
@@ -126,16 +118,12 @@ async def add_member(
     group = await _get_group_or_404(group_id, db)
     await _require_membership(group_id, current_user.id, db)
 
-    # Resolve target user by plaintext ID
-    result = await db.execute(select(User))
-    all_users = result.scalars().all()
-    target_user: User | None = None
-    for u in all_users:
-        if verify_id(body.user_id, u.id_hash):
-            target_user = u
-            break
+    # O(1) lookup via HMAC index
+    lookup = compute_id_lookup(body.user_id)
+    result = await db.execute(select(User).where(User.id_lookup == lookup))
+    target_user = result.scalar_one_or_none()
 
-    if target_user is None:
+    if target_user is None or not verify_id(body.user_id, target_user.id_hash):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found")
 
     # Check if already a member
@@ -160,9 +148,7 @@ async def add_member(
     return MemberResponse(user_id=target_user.id, joined_at=member.joined_at)
 
 
-# ── Get my encrypted SGK for a group ───────────────────────────────────────
-
-
+# Get my encrypted SGK for a group
 @router.get("/{group_id}/sgk", response_model=EncryptedSGKResponse)
 async def get_my_sgk(
     group_id: UUID,
@@ -174,9 +160,7 @@ async def get_my_sgk(
     return EncryptedSGKResponse(encrypted_sgk=member.encrypted_sgk)
 
 
-# ── Share a password ────────────────────────────────────────────────────────
-
-
+# Share a password
 @router.post(
     "/{group_id}/passwords",
     response_model=PasswordResponse,
@@ -205,9 +189,7 @@ async def create_password(
     return entry
 
 
-# ── List group passwords ───────────────────────────────────────────────────
-
-
+# List group passwords
 @router.get("/{group_id}/passwords", response_model=list[PasswordResponse])
 async def list_passwords(
     group_id: UUID,
@@ -223,9 +205,7 @@ async def list_passwords(
     return result.scalars().all()
 
 
-# ── Update a password ──────────────────────────────────────────────────────
-
-
+# Update a password
 @router.patch("/{group_id}/passwords/{password_id}", response_model=PasswordResponse)
 async def update_password(
     group_id: UUID,
@@ -257,9 +237,7 @@ async def update_password(
     return entry
 
 
-# ── Delete a password ──────────────────────────────────────────────────────
-
-
+# Delete a password
 @router.delete("/{group_id}/passwords/{password_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_password(
     group_id: UUID,

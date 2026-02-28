@@ -3,7 +3,8 @@ SQLAlchemy ORM models for the password vault.
 
 Tables
 ------
-- users            : ID (Argon2+pepper hash), SHA-256 password, public key
+- users            : id_lookup (HMAC-SHA256, indexed), id_hash (Argon2),
+                     password_hash (Argon2 over client SHA-256), public key
 - groups           : password-sharing groups
 - group_members    : M2M with the encrypted SGK per member
 - group_passwords  : passwords encrypted with SGK
@@ -28,20 +29,21 @@ class Base(DeclarativeBase):
     pass
 
 
-# ── Users ───────────────────────────────────────────────────────────────────
-
-
+# Users
 class User(Base):
     __tablename__ = "users"
 
     # Internal surrogate PK (never exposed to client)
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # User-supplied ID hashed with Argon2 + pepper (unique)
-    id_hash = Column(String(512), unique=True, nullable=False, index=True)
+    # HMAC-SHA256(user_id, pepper) — deterministic, indexed for O(1) lookup
+    id_lookup = Column(String(64), unique=True, nullable=False, index=True)
 
-    # Password already SHA-256-hashed on the client, stored as-is
-    password_hash = Column(String(64), nullable=False)
+    # Argon2(user_id + pepper) — defence-in-depth verification after lookup
+    id_hash = Column(String(512), nullable=False)
+
+    # Argon2( SHA-256 from client ) — server-side slow hash
+    password_hash = Column(String(512), nullable=False)
 
     # RSA / EC public key in PEM or base64
     public_key = Column(Text, nullable=False)
@@ -54,9 +56,7 @@ class User(Base):
     memberships = relationship("GroupMember", back_populates="user", cascade="all, delete-orphan")
 
 
-# ── Groups ──────────────────────────────────────────────────────────────────
-
-
+# Groups
 class Group(Base):
     __tablename__ = "groups"
 
@@ -76,9 +76,7 @@ class Group(Base):
     owner = relationship("User", foreign_keys=[owner_id])
 
 
-# ── Group Members ──────────────────────────────────────────────────────────
-
-
+# Group Members
 class GroupMember(Base):
     """
     Each row stores the SGK encrypted with the member's public key,
@@ -108,9 +106,7 @@ class GroupMember(Base):
     user = relationship("User", back_populates="memberships")
 
 
-# ── Group Passwords ─────────────────────────────────────────────────────────
-
-
+# Group Passwords
 class GroupPassword(Base):
     """
     A password entry shared with the group, encrypted with the SGK.

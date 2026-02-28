@@ -5,9 +5,7 @@ Pydantic schemas for auth endpoints (register / login).
 from pydantic import BaseModel, Field
 
 
-# ── Register ────────────────────────────────────────────────────────────────
-
-
+# Register
 class RegisterRequest(BaseModel):
     user_id: str = Field(..., min_length=1, description="Plaintext user identifier")
     password_hash: str = Field(
@@ -21,9 +19,7 @@ class RegisterResponse(BaseModel):
     message: str = "User registered successfully"
 
 
-# ── Login ───────────────────────────────────────────────────────────────────
-
-
+# Login
 class LoginRequest(BaseModel):
     user_id: str
     password_hash: str = Field(..., min_length=64, max_length=64)
@@ -34,8 +30,6 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
 
 
-# ── Public key lookup ───────────────────────────────────────────────────────
-
-
+# Public key lookup
 class PublicKeyResponse(BaseModel):
     public_key: str

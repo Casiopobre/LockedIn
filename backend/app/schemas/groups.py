@@ -8,9 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-# ── Group ───────────────────────────────────────────────────────────────────
-
-
+# Group
 class GroupCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     encrypted_sgk: str = Field(
@@ -28,9 +26,7 @@ class GroupResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Add member ──────────────────────────────────────────────────────────────
-
-
+# Add member
 class AddMemberRequest(BaseModel):
     user_id: str = Field(..., description="Plaintext user ID of the member to add")
     encrypted_sgk: str = Field(
@@ -46,16 +42,12 @@ class MemberResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Encrypted SGK retrieval ────────────────────────────────────────────────
-
-
+# Encrypted SGK retrieval
 class EncryptedSGKResponse(BaseModel):
     encrypted_sgk: str
 
 
-# ── Passwords ───────────────────────────────────────────────────────────────
-
-
+# Passwords
 class PasswordCreateRequest(BaseModel):
     label: str = Field(..., min_length=1, max_length=512)
     encrypted_data: str = Field(
@@ -81,9 +73,7 @@ class PasswordUpdateRequest(BaseModel):
     encrypted_data: str | None = None
 
 
-# ── My groups ───────────────────────────────────────────────────────────────
-
-
+# My groups
 class GroupListItem(BaseModel):
     id: UUID
     name: str
