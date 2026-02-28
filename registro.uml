@@ -1,0 +1,26 @@
+@startuml
+skinparam style strictuml
+skinparam shadowing false
+
+actor "Usuario" as U
+participant "App Móvil" as APP
+database "Secure Storage\n(Almacenamiento local)" as SS
+participant "Servidor" as SRV
+database "DB Usuarios" as DB
+
+== Registro de Usuario ==
+
+U -> APP: Introduce Teléfono y Master Key
+APP -> APP: Generar Password remota aleatoria
+APP -> APP: Generar RSA KeyPair (Pub/Priv)
+APP -> SS: Guardar Clave Privada, Master Key\n(SecureRandom)\n y Password remota aleatoria
+
+APP -> APP: SHA-256(Password)
+APP -> SRV: Enviar Teléfono, Clave Pública,\nSHA-256(Password)
+
+SRV -> SRV: HMAC-SHA-256(Teléfono, Pepper_1)\nPara indexado O(1)
+SRV -> SRV: Argon2id(Hash_Pass, Salt, Pepper_2)
+
+SRV -> DB: Guardar Teléfono HMAC-SHA-256, Clave Pública\ny Hash de Password Argon2id
+SRV --> APP: Registro Exitoso
+@enduml
