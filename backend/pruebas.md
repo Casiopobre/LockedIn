@@ -4,6 +4,13 @@
 >
 > Ejecutar los curls en orden. Los valores entre `<...>` deben sustituirse
 > con los datos devueltos por peticiones anteriores.
+>
+> **⚠️ Si vienes de una versión anterior**, el schema de la tabla `users` ha
+> cambiado (nueva columna `id_lookup`, `password_hash` ahora almacena Argon2).
+> Recrea la DB:
+> ```bash
+> docker compose down -v && docker compose up --build
+> ```
 
 ---
 
