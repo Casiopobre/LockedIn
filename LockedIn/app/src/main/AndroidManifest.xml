@@ -43,6 +43,7 @@
         <!-- Autofill service -->
         <service
             android:name=".autofill.PasswordAutofillService"
+            android:label="LockedIn Autofill"
             android:exported="true"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE">
             <intent-filter>

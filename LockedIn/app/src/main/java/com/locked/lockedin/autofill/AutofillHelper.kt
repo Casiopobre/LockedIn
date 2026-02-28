@@ -53,38 +53,117 @@ object AutofillHelper {
     }
 
     private fun isPasswordField(node: ViewNode): Boolean {
-        // Detecta por autofillHints (lo más fiable)
-        val hints = node.autofillHints
-        if (hints != null && hints.any {
-                it.contains(View.AUTOFILL_HINT_PASSWORD, ignoreCase = true)
-            }) return true
 
-        // Detecta por inputType
+        // 1. autofillHints (más fiable)
+        node.autofillHints?.let { hints ->
+            if (hints.any { it.contains(View.AUTOFILL_HINT_PASSWORD, ignoreCase = true) })
+                return true
+        }
+
+        // 2. inputType
         val inputType = node.inputType
         if (inputType and InputType.TYPE_TEXT_VARIATION_PASSWORD != 0) return true
         if (inputType and InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD != 0) return true
         if (inputType and InputType.TYPE_NUMBER_VARIATION_PASSWORD != 0) return true
+        if (inputType and InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD != 0) return true  // ← "mostrar contraseña"
 
-        // Detecta por hint/texto del campo
-        val hint = node.hint?.lowercase() ?: ""
-        return hint.contains("password") || hint.contains("contraseña") || hint.contains("passwd")
+        // 3. HTML atributos (muy útil en WebViews y Chrome)
+        val htmlAttrs = listOf(
+            node.htmlInfo?.tag,
+            node.htmlInfo?.attributes?.find { it.first == "type" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "name" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "id" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "autocomplete" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "placeholder" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "aria-label" }?.second,
+        ).filterNotNull().map { it.lowercase() }
+
+        // type="password" es la señal más directa en HTML
+        if (htmlAttrs.any { it == "password" }) return true
+
+        val passwordKeywords = listOf(
+            "password", "passwd", "pass", "pwd", "contraseña",
+            "clave", "secret", "pin", "código", "code",
+            "current-password", "new-password"
+        )
+        if (htmlAttrs.any { attr -> passwordKeywords.any { kw -> attr.contains(kw) } }) return true
+
+        // 4. Hint, contentDescription, text del nodo
+        val textSources = listOf(
+            node.hint,
+            node.contentDescription?.toString(),
+            node.text?.toString(),
+            node.idEntry  // resource-id del View (ej. "et_password", "input_pwd")
+        ).filterNotNull().map { it.lowercase() }
+
+        if (textSources.any { src -> passwordKeywords.any { kw -> src.contains(kw) } }) return true
+
+        // 5. className (ej. android.widget.EditText con transformación activa)
+        // Si el texto está siendo transformado (••••) casi seguro es contraseña
+        if (node.text != null && isTextTransformed(node)) return true
+
+        return false
     }
 
     private fun isUsernameField(node: ViewNode): Boolean {
-        val hints = node.autofillHints
-        if (hints != null && hints.any {
-                it.contains(View.AUTOFILL_HINT_USERNAME, ignoreCase = true) ||
-                        it.contains(View.AUTOFILL_HINT_EMAIL_ADDRESS, ignoreCase = true)
-            }) return true
 
+        // 1. autofillHints
+        node.autofillHints?.let { hints ->
+            if (hints.any {
+                    it.contains(View.AUTOFILL_HINT_USERNAME, ignoreCase = true) ||
+                            it.contains(View.AUTOFILL_HINT_EMAIL_ADDRESS, ignoreCase = true) ||
+                            it.contains(View.AUTOFILL_HINT_PHONE, ignoreCase = true)
+                }) return true
+        }
+
+        // 2. inputType
         val inputType = node.inputType
         if (inputType and InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS != 0) return true
         if (inputType and InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS != 0) return true
+        if (inputType and InputType.TYPE_CLASS_PHONE != 0) return true  // ← login por teléfono
 
-        val hint = node.hint?.lowercase() ?: ""
-        return hint.contains("user") || hint.contains("email") ||
-                hint.contains("usuario") || hint.contains("correo") ||
-                hint.contains("login")
+        // 3. HTML atributos
+        val htmlAttrs = listOf(
+            node.htmlInfo?.attributes?.find { it.first == "type" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "name" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "id" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "autocomplete" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "placeholder" }?.second,
+            node.htmlInfo?.attributes?.find { it.first == "aria-label" }?.second,
+        ).filterNotNull().map { it.lowercase() }
+
+        val usernameKeywords = listOf(
+            "username", "user", "usuario", "email", "e-mail",
+            "correo", "login", "account", "phone", "teléfono",
+            "telefono", "mobile", "identifier", "handle",
+            "nickname", "nick", "nombre", "name"
+        )
+        if (htmlAttrs.any { attr -> usernameKeywords.any { kw -> attr.contains(kw) } }) return true
+
+        // 4. Hint, contentDescription, idEntry
+        val textSources = listOf(
+            node.hint,
+            node.contentDescription?.toString(),
+            node.text?.toString(),
+            node.idEntry
+        ).filterNotNull().map { it.lowercase() }
+
+        if (textSources.any { src -> usernameKeywords.any { kw -> src.contains(kw) } }) return true
+
+        // 5. type="email" en HTML → siempre es campo de usuario
+        if (htmlAttrs.any { it == "email" || it == "tel" }) return true
+
+        return false
+    }
+
+    // Detecta si el texto visible está enmascarado (●●●●)
+    // Compara longitud del texto con el número de caracteres de transformación
+    private fun isTextTransformed(node: ViewNode): Boolean {
+        val text = node.text?.toString() ?: return false
+        if (text.isEmpty()) return false
+        // Los campos de contraseña suelen mostrar bullets u otros caracteres únicos
+        val uniqueChars = text.toSet()
+        return uniqueChars.size == 1 && text.length > 1
     }
 
     private fun extractWebDomain(node: ViewNode): String? {

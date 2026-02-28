@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Password Manager"
+rootProject.name = "LockedIn"
 include(":app")
  
