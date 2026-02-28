@@ -8,11 +8,11 @@ plugins {
 
 
 android {
-    namespace = "com.yourname.passwordmanager"
+    namespace = "com.locked.lockedin"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.yourname.passwordmanager"
+        applicationId = "com.locked.lockedin"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
