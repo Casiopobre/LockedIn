@@ -40,8 +40,8 @@ import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.screen.UnlockScreen
 import com.locked.lockedin.ui.viewmodel.SettingsViewModel
-import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
-import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
+import com.locked.lockedin.ui.viewmodel.SetupViewModel
+import com.locked.lockedin.ui.viewmodel.UnlockViewModel
 
 object NavigationRoutes {
     const val SETUP = "setup"

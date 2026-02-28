@@ -502,24 +502,3 @@ private fun ActionSmallButton(
         Text(text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
-
-// ── Preview ─────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
-@Composable
-fun ManageGroupScreenPreview() {
-    LockedInTheme() {
-        ManageGroupScreen(
-            groupName = "Grupiño chulo",
-            passwords = listOf(
-                GroupPasswordItem("1", "g1", "u1", "GitHub", "s3cr3t", "2026-01-01", "2026-01-01"),
-                GroupPasswordItem("2", "g1", "u1", "Google", "p4ssw0rd", "2026-01-01", "2026-01-01")
-            ),
-            isLoading = false,
-            onBackClick = {},
-            onAddMemberClick = {},
-            onAddPasswordClick = {},
-            onDeletePasswordClick = {}
-        )
-    }
-}
