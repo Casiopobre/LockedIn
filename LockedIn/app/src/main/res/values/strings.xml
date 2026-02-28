@@ -1,24 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyVault</string>
-    <string name="setup_title">Create your master password</string>
-    <string name="master_password">Master password</string>
-    <string name="confirm_password">Confirm password</string>
-    <string name="create_vault">Create Vault</string>
-    <string name="unlock">Unlock</string>
-    <string name="use_biometrics">Use biometrics</string>
-    <string name="use_master_password">Use master password</string>
-    <string name="biometric_prompt_title">Unlock KeyVault</string>
-    <string name="biometric_prompt_subtitle">Use your fingerprint or face to unlock</string>
-    <string name="lock_vault">Lock vault</string>
-    <string name="add_credential">Add credential</string>
-    <string name="edit_credential">Edit credential</string>
-    <string name="no_credentials">No credentials saved</string>
-    <string name="tap_to_add">Tap + to add your first credential</string>
-    <string name="title">Title</string>
-    <string name="username">Username / Email</string>
-    <string name="password">Password</string>
-    <string name="website">Website / App</string>
-    <string name="save">Save</string>
-    <string name="cancel">Cancel</string>
-    <string name="delete">Delete</string>
+    <string name="app_name">Password Manager</string>
+    <string name="app_description">Secure password storage and management</string>
 </resources>
