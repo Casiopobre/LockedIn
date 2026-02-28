@@ -24,8 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
@@ -55,29 +53,24 @@ fun AddEditPasswordScreen(
     
     val isEditing = passwordEntry != null
 
-    Dialog(
-        onDismissRequest = onNavigateBack,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        AddEditPasswordContent(
-            title = title,
-            username = username,
-            password = password,
-            isPasswordVisible = isPasswordVisible,
-            isEditing = isEditing,
-            onTitleChange = { title = it },
-            onUsernameChange = { username = it },
-            onPasswordChange = { password = it },
-            onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
-            onGoBack = onNavigateBack,
-            onDeleteClick = { showDeleteDialog = true },
-            onSaveClick = {
-                viewModel.addPassword(title, username, password, "", "") { result ->
-                    if (result.isSuccess) onNavigateBack()
-                }
+    AddEditPasswordContent(
+        title = title,
+        username = username,
+        password = password,
+        isPasswordVisible = isPasswordVisible,
+        isEditing = isEditing,
+        onTitleChange = { title = it },
+        onUsernameChange = { username = it },
+        onPasswordChange = { password = it },
+        onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
+        onGoBack = onNavigateBack,
+        onDeleteClick = { showDeleteDialog = true },
+        onSaveClick = {
+            viewModel.addPassword(title, username, password, "", "") { result ->
+                if (result.isSuccess) onNavigateBack()
             }
-        )
-    }
+        }
+    )
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -191,9 +184,10 @@ private fun AddEditPasswordContent(
                 label = "Password",
                 value = if (isPasswordVisible) password else "••••••••",
                 subLabel = "Tap to reveal",
-                icon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                onIconClick = onTogglePasswordVisibility,
-                onValueChange = onPasswordChange
+                icon = Icons.Default.Edit,
+                onValueChange = onPasswordChange,
+                innerIcon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                onInnerIconClick = onTogglePasswordVisibility
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -316,7 +310,9 @@ private fun FormSection(
     subLabel: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onIconClick: () -> Unit = {},
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    innerIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onInnerIconClick: () -> Unit = {}
 ) {
     Column {
         Text(
@@ -335,13 +331,20 @@ private fun FormSection(
                 border = borderStroke(),
                 modifier = Modifier.weight(1f)
             ) {
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    BasicTextField(
-                        value = value,
-                        onValueChange = onValueChange,
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        BasicTextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (innerIcon != null) {
+                        IconButton(onClick = onInnerIconClick) {
+                            Icon(innerIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 }
             }
 

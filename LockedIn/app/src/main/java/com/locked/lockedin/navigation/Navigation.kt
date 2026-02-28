@@ -17,20 +17,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.dialog
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
-import com.locked.lockedin.ui.screen.AddEditPasswordScreen
-import com.locked.lockedin.ui.screen.GroupsScreen
-import com.locked.lockedin.ui.screen.MainScreen
-import com.locked.lockedin.ui.screen.SettingsScreen
-import com.locked.lockedin.ui.screen.SetupScreen
-import com.locked.lockedin.ui.screen.UnlockScreen
+import com.locked.lockedin.ui.screen.*
+import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.SetupViewModel
 import com.locked.lockedin.ui.viewmodel.UnlockViewModel
@@ -40,11 +41,14 @@ object NavigationRoutes {
     const val UNLOCK = "unlock"
     const val MAIN = "my_passwords"
     const val GROUPS = "my_groups"
+    const val ADD_GROUP = "add_group"
+    const val MANAGE_GROUP = "manage_group/{groupName}"
     const val SETTINGS = "settings"
     const val ADD_PASSWORD = "add_password"
     const val EDIT_PASSWORD = "edit_password/{passwordId}"
 
     fun editPassword(passwordId: Long) = "edit_password/$passwordId"
+    fun manageGroup(groupName: String) = "manage_group/$groupName"
 }
 
 enum class Destination(
@@ -100,16 +104,10 @@ fun PasswordManagerNavigation(
                             onClick = {
                                 if (currentRoute != destination.route) {
                                     navController.navigate(destination.route) {
-                                        // Pop up to the start destination of the graph to
-                                        // avoid building up a large stack of destinations
-                                        // on the back stack as users select items
                                         popUpTo(NavigationRoutes.MAIN) {
                                             saveState = true
                                         }
-                                        // Avoid multiple copies of the same destination when
-                                        // reselecting the same item
                                         launchSingleTop = true
-                                        // Restore state when reselecting a previously selected item
                                         restoreState = true
                                     }
                                 }
@@ -184,7 +182,26 @@ fun PasswordManagerNavigation(
 
             // Groups
             composable(NavigationRoutes.GROUPS) {
-                GroupsScreen()
+                GroupsScreen(
+                    onAddGroupClick = {
+                        navController.navigate(NavigationRoutes.ADD_GROUP)
+                    },
+                    onGroupClick = { group ->
+                        navController.navigate(NavigationRoutes.manageGroup(group.name))
+                    }
+                )
+            }
+
+            // Manage Group
+            composable(
+                route = NavigationRoutes.MANAGE_GROUP,
+                arguments = listOf(navArgument("groupName") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val groupName = backStackEntry.arguments?.getString("groupName") ?: ""
+                ManageGroupScreen(
+                    groupName = groupName,
+                    onBackClick = { navController.popBackStack() }
+                )
             }
 
             // Settings
@@ -192,8 +209,11 @@ fun PasswordManagerNavigation(
                 SettingsScreen()
             }
 
-            // Add password
-            composable(NavigationRoutes.ADD_PASSWORD) {
+            // Add password as a Dialog
+            dialog(
+                route = NavigationRoutes.ADD_PASSWORD,
+                dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
                 AddEditPasswordScreen(
                     viewModel = passwordViewModel,
                     passwordEntry = null,
@@ -201,10 +221,11 @@ fun PasswordManagerNavigation(
                 )
             }
 
-            // Edit password
-            composable(
+            // Edit password as a Dialog
+            dialog(
                 route = NavigationRoutes.EDIT_PASSWORD,
-                arguments = listOf(navArgument("passwordId") { type = NavType.LongType })
+                arguments = listOf(navArgument("passwordId") { type = NavType.LongType }),
+                dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
             ) { backStackEntry ->
                 val passwordId = backStackEntry.arguments?.getLong("passwordId") ?: 0L
                 val selectedPassword = passwordViewModel.selectedPassword.collectAsState().value
@@ -237,6 +258,52 @@ fun PasswordManagerNavigation(
                     }
                 }
             }
+
+            // Add group as a Dialog
+            dialog(
+                route = NavigationRoutes.ADD_GROUP,
+                dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                AddGroupScreen(
+                    onDismiss = { navController.popBackStack() },
+                    onSave = { _ ->
+                        // TODO: Implement actual saving logic when GroupViewModel is ready
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun NavigationPreview() {
+    PasswordManagerTheme {
+        val navController = rememberNavController()
+        val context = LocalContext.current
+        val masterKeyManager = remember { MasterKeyManager(context) }
+        
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    Destination.entries.forEach { destination ->
+                        NavigationBarItem(
+                            selected = destination == Destination.PASSWORDS,
+                            onClick = { },
+                            icon = {
+                                Icon(
+                                    destination.icon,
+                                    contentDescription = destination.contentDescription
+                                )
+                            },
+                            label = { Text(destination.label) }
+                        )
+                    }
+                }
+            }
+        ) { padding ->
+            Text("Preview Content", modifier = Modifier.padding(padding))
         }
     }
 }
