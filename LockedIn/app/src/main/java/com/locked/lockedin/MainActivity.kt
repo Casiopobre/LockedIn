@@ -19,27 +19,39 @@ import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.PwnedCheckManager
+import com.locked.lockedin.ui.theme.LockedInTheme
 import com.locked.lockedin.security.RsaKeyManager
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.GroupViewModelFactory
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
+import com.locked.lockedin.ui.viewmodel.SettingsViewModel
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 class MainActivity : FragmentActivity() {
 
+    // Instancia el ViewModel a nivel de clase, no dentro de onCreate
+    private val settingsViewModel: SettingsViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Ahora sí puedes llamar los métodos de instancia
+        settingsViewModel.applyCurrentTheme()
+        settingsViewModel.applyCurrentLanguage()
+
         super.onCreate(savedInstanceState)
 
         setContent {
-            PasswordManagerTheme {
+            val uiState by settingsViewModel.uiState.collectAsState()
+
+            LockedInTheme(appTheme = uiState.theme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color    = MaterialTheme.colorScheme.background
                 ) {
                     val context = applicationContext
 
-                    // Security
                     val masterKeyManager    = remember { MasterKeyManager(context) }
                     val cryptoManager       = remember { CryptoManager() }
                     val biometricKeyManager = remember { BiometricKeyManager(context) }
@@ -66,6 +78,7 @@ class MainActivity : FragmentActivity() {
                         masterKeyManager    = masterKeyManager,
                         biometricKeyManager = biometricKeyManager,
                         passwordViewModel   = passwordViewModel,
+                        settingsViewModel    = settingsViewModel,
                         groupViewModel      = groupViewModel,
                         vaultRepository     = vaultRepository,
                         activity            = this@MainActivity
