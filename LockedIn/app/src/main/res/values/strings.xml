@@ -21,4 +21,13 @@
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
+
+    <string name="my_passwords_title">MY PASSWORDS</string>
+    <string name="add_password">Add password</string>
+    <string name="del_passwords">Delete passwords</string>
+    <string name="search_placeholder">Search</string>
+    <string name="filter">Filter</string>
+    <string name="logo">Logo</string>
+    <string name="site_name">Site name</string>
+    <string name="owner">Owner</string>
 </resources>
