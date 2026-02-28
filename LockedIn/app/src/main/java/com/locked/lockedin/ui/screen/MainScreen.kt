@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.ui.component.DebugBreachPanel
 import com.locked.lockedin.ui.component.PasswordItem
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordUiState
@@ -31,6 +41,10 @@ import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 /**
  * Main screen displaying the list of passwords
  */
+private val PwnedRed      = Color(0xFFD32F2F)
+private val PwnedRedLight = Color(0xFFFFEBEE)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: PasswordViewModel,
@@ -38,9 +52,9 @@ fun MainScreen(
     onPasswordClick: (PasswordEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val passwords by viewModel.passwords.collectAsState()
+    val passwords   by viewModel.passwords.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState     by viewModel.uiState.collectAsState()
 
     MainScreenContent(
         passwords = passwords,
@@ -223,12 +237,10 @@ fun MainScreenContent(
                 passwords.isEmpty() -> {
                     EmptyContent(
                         hasSearchQuery = searchQuery.isNotBlank(),
-                        searchQuery = searchQuery
+                        searchQuery    = searchQuery
                     )
-                }
-                else -> {
-                    PasswordList(
-                        passwords = passwords,
+                    else -> PasswordList(
+                        passwords       = passwords,
                         onPasswordClick = onPasswordClick
                     )
                 }
@@ -254,17 +266,11 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun EmptyContent(
-    hasSearchQuery: Boolean,
-    searchQuery: String
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+private fun EmptyContent(hasSearchQuery: Boolean, searchQuery: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+            modifier            = Modifier.padding(32.dp)
         ) {
             Text(
                 text = if (hasSearchQuery) "No results found" else "No passwords saved",
@@ -329,4 +335,26 @@ fun MainScreenPreview() {
             onPasswordClick = {}
         )
     }
+}
+private fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClearClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value         = query,
+        onValueChange = onQueryChange,
+        label         = { Text("Search passwords") },
+        placeholder   = { Text("Search by title, username, or website") },
+        leadingIcon   = { Icon(Icons.Default.Search, contentDescription = "Search") },
+        trailingIcon  = {
+            if (query.isNotBlank()) {
+                IconButton(onClick = onClearClick) {
+                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                }
+            }
+        },
+        modifier = modifier
+    )
 }

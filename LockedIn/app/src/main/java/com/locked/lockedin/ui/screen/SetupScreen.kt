@@ -1,5 +1,6 @@
 package com.locked.lockedin.ui.screen
 
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,8 +20,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.locked.lockedin.ui.viewmodel.SetupUiState
-import com.locked.lockedin.ui.viewmodel.SetupViewModel
+import androidx.fragment.app.FragmentActivity
+import com.locked.lockedin.security.BiometricHelper
+import com.locked.lockedin.security.BiometricKeyManager
+import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
 
 /**
  * First-launch screen where the user creates their master key.
@@ -28,14 +31,73 @@ import com.locked.lockedin.ui.viewmodel.SetupViewModel
 @Composable
 fun SetupScreen(
     viewModel: SetupViewModel,
+    biometricKeyManager: BiometricKeyManager,
+    activity: FragmentActivity,
     onSetupComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Navigate away once setup succeeds
+    var showBiometricDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(uiState.isSetupComplete) {
-        if (uiState.isSetupComplete) onSetupComplete()
+        if (uiState.isSetupComplete) {
+            if (BiometricHelper.isAvailable(activity)) {
+                showBiometricDialog = true   // intercept → ask user first
+            } else {
+                onSetupComplete()            // no biometrics on device → go straight in
+            }
+        }
+    }
+
+    // Biometric opt-in dialog
+    if (showBiometricDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showBiometricDialog = false
+                onSetupComplete()
+            },
+            icon    = { Icon(Icons.Default.Lock, contentDescription = null) },
+            title   = { Text("Enable Biometric Unlock?") },
+            text    = {
+                Text(
+                    "Use your fingerprint or face to unlock the vault " +
+                            "instead of typing your master key each time.",
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    // Step 1: get an encryption cipher (no auth yet)
+                    val cipher = biometricKeyManager.getCipherForEncryption()
+
+                    // Step 2: show BiometricPrompt with that cipher
+                    BiometricHelper.showPrompt(
+                        activity = activity,
+                        title = "Enable Biometric Unlock",
+                        subtitle = "Authenticate to save your vault key",
+                        cryptoObject = BiometricPrompt.CryptoObject(cipher),
+                        onSuccess = { authenticatedCipher ->
+                            // Step 3: now we have an authorized cipher — encrypt & save
+                            viewModel.enableBiometricAfterSetup(biometricKeyManager, authenticatedCipher)
+                            showBiometricDialog = false
+                            onSetupComplete()
+                        },
+                        onFailure = {
+                            // User cancelled or failed — skip biometric, just proceed
+                            showBiometricDialog = false
+                            onSetupComplete()
+                        }
+                    )
+                }) { Text("Enable") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showBiometricDialog = false
+                    onSetupComplete()
+                }) { Text("Skip") }
+            }
+        )
     }
 
     Surface(

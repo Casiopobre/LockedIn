@@ -2,12 +2,16 @@ package com.locked.lockedin.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,6 +30,9 @@ import com.locked.lockedin.ui.theme.PasswordManagerTheme
  * Composable for displaying a password entry item in the list.
  * Inspired by the provided sketch but refined with modern Material 3 aesthetics.
  */
+private val PwnedRed        = Color(0xFFD32F2F)
+private val PwnedRedSurface = Color(0xFFFFF3F3)
+
 @Composable
 fun PasswordItem(
     password: PasswordEntry,
@@ -151,5 +158,41 @@ fun PasswordItemPreview() {
                 onClick = { }
             )
         }
+private fun PwnedBadge(count: Int) {
+    Surface(
+        shape  = MaterialTheme.shapes.small,
+        color  = PwnedRed,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            verticalAlignment    = Alignment.CenterVertically,
+            modifier             = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Icon(
+                imageVector        = Icons.Default.Warning,
+                contentDescription = null,
+                tint               = Color.White,
+                modifier           = Modifier.size(11.dp)
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                text  = "PWNED",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color      = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    return when {
+        diff < 60_000       -> "just now"
+        diff < 3_600_000    -> "${diff / 60_000}m ago"
+        diff < 86_400_000   -> "${diff / 3_600_000}h ago"
+        diff < 604_800_000  -> "${diff / 86_400_000}d ago"
+        else -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }

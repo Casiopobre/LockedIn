@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.DialogProperties
+import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,6 +29,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.LaunchedEffect
+import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.screen.*
@@ -35,10 +38,12 @@ import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.SetupViewModel
 import com.locked.lockedin.ui.viewmodel.UnlockViewModel
+import com.locked.lockedin.ui.screen.UnlockScreen
 
 object NavigationRoutes {
     const val SETUP = "setup"
     const val UNLOCK = "unlock"
+    // Anter MAIN = "main"
     const val MAIN = "my_passwords"
     const val GROUPS = "my_groups"
     const val ADD_GROUP = "add_group"
@@ -66,7 +71,9 @@ enum class Destination(
 fun PasswordManagerNavigation(
     navController: NavHostController,
     masterKeyManager: MasterKeyManager,
+    biometricKeyManager: BiometricKeyManager,
     passwordViewModel: PasswordViewModel,
+    activity: FragmentActivity,
     modifier: Modifier = Modifier
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -158,6 +165,8 @@ fun PasswordManagerNavigation(
                 }
                 UnlockScreen(
                     viewModel = unlockViewModel,
+                    biometricKeyManager = biometricKeyManager,
+                    activity            = activity,
                     onUnlockSuccess = {
                         navController.navigate(NavigationRoutes.MAIN) {
                             popUpTo(NavigationRoutes.UNLOCK) { inclusive = true }
@@ -215,9 +224,12 @@ fun PasswordManagerNavigation(
                 dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 AddEditPasswordScreen(
-                    viewModel = passwordViewModel,
-                    passwordEntry = null,
-                    onNavigateBack = { navController.popBackStack() }
+                    viewModel      = passwordViewModel,
+                    passwordEntry  = selectedPassword,
+                    onNavigateBack = {
+                        passwordViewModel.clearSelectedPassword()
+                        navController.popBackStack()
+                    }
                 )
             }
 
