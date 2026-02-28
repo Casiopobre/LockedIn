@@ -4,6 +4,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 
@@ -72,7 +76,6 @@ fun AddEditPasswordScreen(
         onDeleteClick      = { showDeleteDialog = true },
         onSaveClick        = {
             if (isEditing && passwordEntry != null) {
-                // ── FIX: update, not insert ──────────────────────────────────
                 viewModel.updatePasswordEntry(
                     id       = passwordEntry.id,
                     title    = title,
@@ -130,6 +133,28 @@ private fun AddEditPasswordContent(
     onSaveClick: () -> Unit
 ) {
     val context = LocalContext.current
+
+    // ── Password generator state ─────────────────────────────────────────────
+    var showGeneratorOptions by remember { mutableStateOf(false) }
+    var genLength            by remember { mutableStateOf(16f) }
+    var genUppercase         by remember { mutableStateOf(true) }
+    var genLowercase         by remember { mutableStateOf(true) }
+    var genNumbers           by remember { mutableStateOf(true) }
+    var genSymbols           by remember { mutableStateOf(true) }
+
+    val cryptoManager = remember { CryptoManager() }
+
+    fun generateAndFill() {
+        val generated = cryptoManager.generateSecurePassword(
+            length           = genLength.toInt(),
+            includeUppercase = genUppercase,
+            includeLowercase = genLowercase,
+            includeNumbers   = genNumbers,
+            includeSymbols   = genSymbols
+        )
+        onPasswordChange(generated)
+        copyToClipboard(context, "Generated password", generated)
+    }
 
     Surface(
         modifier = Modifier
@@ -221,6 +246,137 @@ private fun AddEditPasswordContent(
                 onToggleVisibility = onTogglePasswordVisibility,
                 onCopy             = { copyToClipboard(context, "Password", password) }
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ── Generate password button ──────────────────────────────────────
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Main generate button
+                Button(
+                    onClick = { generateAndFill() },
+                    colors  = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD1ECF1).copy(alpha = 0.9f),
+                        contentColor   = Color(0xFF0C5460)
+                    ),
+                    shape   = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .border(1.dp, Color(0xFF0C5460).copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Generate", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+
+                // Toggle options button
+                OutlinedButton(
+                    onClick = { showGeneratorOptions = !showGeneratorOptions },
+                    shape   = RoundedCornerShape(12.dp),
+                    colors  = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.height(44.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(
+                        if (showGeneratorOptions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = "Toggle generator options",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Options", fontSize = 13.sp)
+                }
+            }
+
+            // ── Generator options panel (collapsible) ─────────────────────────
+            AnimatedVisibility(
+                visible = showGeneratorOptions,
+                enter   = expandVertically(),
+                exit    = shrinkVertically()
+            ) {
+                Surface(
+                    shape    = RoundedCornerShape(12.dp),
+                    color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Length slider
+                        Row(
+                            modifier          = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Length",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier   = Modifier.weight(1f)
+                            )
+                            Text(
+                                "${genLength.toInt()}",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Slider(
+                            value         = genLength,
+                            onValueChange = { genLength = it },
+                            valueRange    = 8f..64f,
+                            steps         = 55,
+                            modifier      = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Character type checkboxes — 2x2 grid
+                        Text(
+                            "Include",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OptionCheckbox("A–Z Uppercase", genUppercase, { genUppercase = it }, Modifier.weight(1f))
+                            OptionCheckbox("a–z Lowercase", genLowercase, { genLowercase = it }, Modifier.weight(1f))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OptionCheckbox("0–9 Numbers", genNumbers, { genNumbers = it }, Modifier.weight(1f))
+                            OptionCheckbox("!@# Symbols",  genSymbols,  { genSymbols = it },  Modifier.weight(1f))
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Generate & fill button inside the panel
+                        Button(
+                            onClick  = { generateAndFill() },
+                            enabled  = genUppercase || genLowercase || genNumbers || genSymbols,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Generate & fill", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -367,7 +523,6 @@ private fun AddEditPasswordContent(
                     }
                 }
 
-                // ── FIX: show Save button in edit mode too ────────────────────
                 if (isEditing) {
                     Spacer(modifier = Modifier.width(8.dp))
                     FilledTonalIconButton(
@@ -386,6 +541,31 @@ private fun AddEditPasswordContent(
                 }
             }
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small checkbox row used inside the generator options panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun OptionCheckbox(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier          = modifier.padding(vertical = 2.dp)
+    ) {
+        Checkbox(
+            checked         = checked,
+            onCheckedChange = onCheckedChange,
+            modifier        = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -425,7 +605,6 @@ private fun FormSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier          = Modifier.padding(start = 12.dp)
                 ) {
-                    // ── FIX: use VisualTransformation so field stays editable ──
                     BasicTextField(
                         value               = value,
                         onValueChange       = onValueChange,
@@ -450,7 +629,6 @@ private fun FormSection(
                         }
                     )
 
-                    // Eye toggle (password only)
                     if (isPassword) {
                         IconButton(onClick = onToggleVisibility) {
                             Icon(
@@ -462,7 +640,6 @@ private fun FormSection(
                         }
                     }
 
-                    // ── Copy to clipboard button ─────────────────────────────
                     IconButton(onClick = onCopy) {
                         Icon(
                             imageVector        = Icons.Default.ContentCopy,
@@ -507,7 +684,7 @@ fun AddEditPasswordScreenPreview() {
             username                 = "user@gmail.com",
             password                 = "password123",
             isPasswordVisible        = false,
-            isEditing                = true,
+            isEditing                = false,
             onTitleChange            = {},
             onUsernameChange         = {},
             onPasswordChange         = {},
