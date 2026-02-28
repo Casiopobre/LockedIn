@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.ui.component.PasswordItem
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 
 /**
  * Screen for managing a specific group, displaying its members and passwords.
@@ -287,7 +287,7 @@ private fun MemberRow(member: MemberData) {
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun ManageGroupScreenPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         ManageGroupScreen(
             groupName = "Grupiño chulo",
             onBackClick = {}

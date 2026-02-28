@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 
 class AutofillAuthActivity : ComponentActivity() {
 
@@ -26,7 +26,7 @@ class AutofillAuthActivity : ComponentActivity() {
         )
 
         setContent {
-            PasswordManagerTheme {
+            LockedInTheme() {
                 AuthScreen(
                     onAuthenticated = {
                         // El vault ya está desbloqueado, devolvemos el FillResponse

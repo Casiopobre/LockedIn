@@ -17,11 +17,13 @@ import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.PwnedCheckManager
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 import com.locked.lockedin.ui.viewmodel.PasswordViewModelFactory
 import com.locked.lockedin.ui.viewmodel.SettingsViewModel
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 class MainActivity : FragmentActivity() {
 
@@ -36,7 +38,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            PasswordManagerTheme {
+            val uiState by settingsViewModel.uiState.collectAsState()
+
+            LockedInTheme(appTheme = uiState.theme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color    = MaterialTheme.colorScheme.background
@@ -62,6 +66,7 @@ class MainActivity : FragmentActivity() {
                         masterKeyManager    = masterKeyManager,
                         biometricKeyManager = biometricKeyManager,
                         passwordViewModel   = passwordViewModel,
+                        settingsViewModel    = settingsViewModel,
                         activity            = this@MainActivity
                     )
                 }

@@ -46,7 +46,7 @@ import androidx.core.net.toUri
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    viewModel: SettingsViewModel = viewModel(),
+    viewModel: SettingsViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 

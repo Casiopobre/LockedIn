@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
 
 /**
  * Groups screen displaying the list of password groups
@@ -298,7 +298,7 @@ fun GroupItem(group: GroupItemData, onClick: () -> Unit) {
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun GroupsScreenPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         GroupsScreenContent(
             groups = listOf(
                 GroupItemData(1, "Grupiño chulo", "You", 13),
