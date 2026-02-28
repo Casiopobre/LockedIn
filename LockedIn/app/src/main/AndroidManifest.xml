@@ -4,7 +4,6 @@
 
     <!-- Permissions for biometric authentication -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
     <!-- Internet permission for potential future features -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -27,16 +26,33 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.PasswordManager"
             android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".autofill.AutofillAuthActivity"
+            android:theme="@style/Theme.PasswordManager"
+            android:exported="false" />
+
+        <!-- Autofill service -->
+        <service
+            android:name=".autofill.PasswordAutofillService"
+            android:label="LockedIn Autofill"
+            android:exported="true"
+            android:permission="android.permission.BIND_AUTOFILL_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.autofill.AutofillService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.autofill"
+                android:resource="@xml/autofill_service" />
+        </service>
 
         <!-- Prevent app from appearing in screenshots -->
         <meta-data
