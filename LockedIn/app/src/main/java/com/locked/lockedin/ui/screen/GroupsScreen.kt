@@ -26,7 +26,10 @@ import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 
 /**
- * Groups screen displaying the list of password groups
+ * Groups screen displaying the list of password groups.
+ *
+ * On first composition it transparently registers/logs in to the backend.
+ * If connection fails, a full-screen error message is shown.
  */
 @Composable
 fun GroupsScreen(
@@ -39,11 +42,22 @@ fun GroupsScreen(
     val groups by groupViewModel.groups.collectAsState()
     val uiState by groupViewModel.uiState.collectAsState()
 
-    // Load groups on first composition
+    // Authenticate + load groups on first composition
     LaunchedEffect(Unit) {
-        groupViewModel.loadGroups()
+        groupViewModel.ensureAuthenticatedAndLoadGroups()
     }
 
+    // ── Connection error state ──────────────────────────────────────────
+    if (uiState.connectionError != null) {
+        ConnectionErrorScreen(
+            message = uiState.connectionError!!,
+            onRetry = { groupViewModel.ensureAuthenticatedAndLoadGroups() },
+            modifier = modifier
+        )
+        return
+    }
+
+    // ── Normal state (authenticated) ────────────────────────────────────
     // Map API model to UI model
     val groupItems = groups.map { g ->
         GroupItemData(
@@ -285,6 +299,57 @@ fun GroupItem(group: GroupItemData, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
+        }
+    }
+}
+
+/**
+ * Full-screen error shown when the backend is unreachable.
+ */
+@Composable
+fun ConnectionErrorScreen(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.WifiOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Reintentar")
+            }
         }
     }
 }

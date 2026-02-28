@@ -81,21 +81,10 @@ class SetupViewModel(
                     masterKeyManager.setupMasterKey(state.masterKey)
                 }
 
-                // 2. Register on the backend (generates RSA keys + SHA-256 hash)
-                try {
-                    vaultRepository.register(HARDCODED_USER_ID, state.masterKey)
-                    // 3. Auto-login to get a JWT
-                    vaultRepository.login(HARDCODED_USER_ID, state.masterKey)
-                } catch (e: Exception) {
-                    // Registration may fail if user already exists (409) — try login only
-                    try {
-                        vaultRepository.login(HARDCODED_USER_ID, state.masterKey)
-                    } catch (_: Exception) {
-                        // Network unavailable — vault still works locally
-                    }
-                }
+                // 2. Cache credentials for deferred auth (register/login on Groups entry)
+                vaultRepository.cacheCredentials(HARDCODED_USER_ID, state.masterKey)
 
-                // 4. Derive and cache the encryption key in memory
+                // 3. Derive and cache the encryption key in memory
                 onKeyDerived(state.masterKey)
                 _uiState.value = _uiState.value.copy(isSetupComplete = true)
             } catch (e: Exception) {
@@ -197,10 +186,8 @@ class UnlockViewModel(
                 // Derive and cache the encryption key in memory
                 onKeyDerived(key)
 
-                // Login on the backend (fire-and-forget — vault still works locally)
-                try {
-                    vaultRepository.login(HARDCODED_USER_ID, key)
-                } catch (_: Exception) { /* offline is OK */ }
+                // Cache credentials for deferred auth (register/login on Groups entry)
+                vaultRepository.cacheCredentials(HARDCODED_USER_ID, key)
 
                 _uiState.value = _uiState.value.copy(isUnlocked = true)
             } else {
