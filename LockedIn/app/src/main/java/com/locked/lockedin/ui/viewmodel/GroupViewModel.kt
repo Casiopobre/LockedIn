@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 
 data class GroupUiState(
     val isLoading: Boolean = false,
+    val isAuthenticated: Boolean = false,
+    val connectionError: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -47,6 +49,40 @@ class GroupViewModel(
     /** Members of the currently selected group (phone numbers). */
     private val _groupMembers = MutableStateFlow<List<String>>(emptyList())
     val groupMembers = _groupMembers.asStateFlow()
+
+    // ── Auth + Groups entry point ─────────────────────────────────────────
+
+    /**
+     * Called when the user navigates to the Groups screen.
+     * Transparently registers or logs in, then loads groups.
+     *
+     * - Not registered → generates RSA key pair, registers via API, logs in.
+     * - Already registered → logs in.
+     * - Connection failure → shows connection error.
+     */
+    fun ensureAuthenticatedAndLoadGroups() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isLoading = true, connectionError = null, errorMessage = null)
+            }
+            try {
+                vaultRepository.ensureAuthenticated()
+                _uiState.update { it.copy(isAuthenticated = true) }
+                // Auth succeeded — now load groups
+                val result = vaultRepository.listMyGroups()
+                _groups.value = result
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = false,
+                        connectionError = "Error de conexión. Debes estar conectado a internet para usar esta función."
+                    )
+                }
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
 
     // ── Groups CRUD ─────────────────────────────────────────────────────────
 
@@ -200,7 +236,7 @@ class GroupViewModel(
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     fun clearMessages() {
-        _uiState.update { it.copy(errorMessage = null, successMessage = null) }
+        _uiState.update { it.copy(errorMessage = null, successMessage = null, connectionError = null) }
     }
 }
 

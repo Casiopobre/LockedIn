@@ -51,7 +51,77 @@ class VaultRepository(
     private val api: VaultApiService = ApiClient.service
 ) {
 
+    // ── Credential caching (offline-first) ───────────────────────────────
+
+    /**
+     * Cache the user's credentials locally so we can register/login later
+     * when the user opens the Groups section.
+     * Called during Setup and Unlock — no network required.
+     */
+    fun cacheCredentials(userId: String, masterPassword: String) {
+        sessionManager.saveUserId(userId)
+        sessionManager.savePasswordHash(PasswordHasher.sha256(masterPassword))
+    }
+
     // ── Auth ────────────────────────────────────────────────────────────────
+
+    /**
+     * Ensure the user is authenticated with the backend.
+     *
+     * Flow (transparent to the caller):
+     * 1. If a valid JWT already exists → return immediately.
+     * 2. Generate RSA key pair if needed.
+     * 3. Try to **register** (POST userId + SHA-256 hash + pubkey).
+     * 4. If server replies 409 (already exists) → fall through to login.
+     * 5. **Login** (POST userId + SHA-256 hash) → store JWT.
+     *
+     * @throws Exception on network / connection failure.
+     */
+    suspend fun ensureAuthenticated() {
+        if (isLoggedIn) return
+
+        val userId = sessionManager.getUserId()
+            ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
+        val passwordHash = sessionManager.getPasswordHash()
+            ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
+
+        // Ensure RSA keys exist
+        rsaKeyManager.generateKeyPair()
+        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
+
+        // Try register first
+        var needsLogin = false
+        try {
+            val regResponse = api.register(
+                RegisterRequest(
+                    userId = userId,
+                    passwordHash = passwordHash,
+                    publicKey = publicKeyPem
+                )
+            )
+            if (!regResponse.isSuccessful) {
+                if (regResponse.code() == 409) {
+                    // Already registered — just login
+                    needsLogin = true
+                } else {
+                    throw ApiException(regResponse.code(), regResponse.errorBody()?.string())
+                }
+            } else {
+                // Registration succeeded — now login to get a JWT
+                needsLogin = true
+            }
+        } catch (e: ApiException) {
+            if (e.httpCode == 409) {
+                needsLogin = true
+            } else {
+                throw e
+            }
+        }
+
+        if (needsLogin) {
+            loginWithHash(userId, passwordHash)
+        }
+    }
 
     /**
      * Register a new user.
@@ -93,7 +163,13 @@ class VaultRepository(
      */
     suspend fun login(userId: String, masterPassword: String): LoginResponse {
         val passwordHash = PasswordHasher.sha256(masterPassword)
+        return loginWithHash(userId, passwordHash)
+    }
 
+    /**
+     * Internal login using a pre-computed SHA-256 hash.
+     */
+    private suspend fun loginWithHash(userId: String, passwordHash: String): LoginResponse {
         val response = api.login(
             LoginRequest(userId = userId, passwordHash = passwordHash)
         )
