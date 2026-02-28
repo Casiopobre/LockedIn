@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.locked.lockedin.network.model.GroupListItem
 import com.locked.lockedin.network.model.PasswordResponse
+import com.locked.lockedin.repository.ApiException
 import com.locked.lockedin.repository.VaultRepository
 import com.locked.lockedin.security.SgkManager
 import kotlinx.coroutines.flow.*
@@ -59,6 +60,7 @@ class GroupViewModel(
      * - Not registered → generates RSA key pair, registers via API, logs in.
      * - Already registered → logs in.
      * - Connection failure → shows connection error.
+     * - Stale JWT → clears session and retries once.
      */
     fun ensureAuthenticatedAndLoadGroups() {
         viewModelScope.launch {
@@ -66,16 +68,62 @@ class GroupViewModel(
                 it.copy(isLoading = true, connectionError = null, errorMessage = null)
             }
             try {
+                // Authenticate (login → register if needed → login)
                 vaultRepository.ensureAuthenticated()
                 _uiState.update { it.copy(isAuthenticated = true) }
-                // Auth succeeded — now load groups
-                val result = vaultRepository.listMyGroups()
+
+                // Load groups — with one 401-retry (handles expired JWT)
+                val result = try {
+                    vaultRepository.listMyGroups()
+                } catch (e: ApiException) {
+                    if (e.httpCode == 401) {
+                        // JWT was stale; force fresh auth and retry
+                        vaultRepository.clearSession()
+                        vaultRepository.ensureAuthenticated()
+                        vaultRepository.listMyGroups()
+                    } else {
+                        throw e
+                    }
+                }
                 _groups.value = result
-            } catch (_: Exception) {
+            } catch (e: ApiException) {
+                // HTTP-level error from the API (not a network issue)
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = false,
+                        connectionError = when (e.httpCode) {
+                            409 -> "Error de autenticación. El usuario existe en el servidor pero las credenciales no coinciden."
+                            401 -> "Error de autenticación. No se pudo iniciar sesión."
+                            else -> "Error del servidor (${e.httpCode}). Inténtalo de nuevo más tarde."
+                        }
+                    )
+                }
+            } catch (_: java.net.UnknownHostException) {
                 _uiState.update {
                     it.copy(
                         isAuthenticated = false,
                         connectionError = "Error de conexión. Debes estar conectado a internet para usar esta función."
+                    )
+                }
+            } catch (_: java.net.ConnectException) {
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = false,
+                        connectionError = "Error de conexión. Debes estar conectado a internet para usar esta función."
+                    )
+                }
+            } catch (_: java.io.IOException) {
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = false,
+                        connectionError = "Error de conexión. Debes estar conectado a internet para usar esta función."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = false,
+                        connectionError = "Error inesperado: ${e.message}"
                     )
                 }
             } finally {

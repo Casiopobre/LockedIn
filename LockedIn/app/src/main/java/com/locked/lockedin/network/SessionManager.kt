@@ -33,8 +33,8 @@ class SessionManager(context: Context) {
     /** Retrieve the JWT access token, or null if not logged in. */
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
-    /** Returns the token formatted for the Authorization header. */
-    fun bearerToken(): String? = getToken()?.let { "Bearer $it" }
+    /** Returns the token formatted for the Authorization header, or null. */
+    fun bearerToken(): String? = getToken()?.takeIf { it.isNotBlank() }?.let { "Bearer $it" }
 
     // ── User ID ─────────────────────────────────────────────────────────────
 
@@ -58,9 +58,14 @@ class SessionManager(context: Context) {
 
     // ── Session control ─────────────────────────────────────────────────────
 
-    /** Returns true if a valid session exists. */
+    /** Returns true if a valid session exists (non-null, non-blank token). */
     val isLoggedIn: Boolean
-        get() = getToken() != null
+        get() = !getToken().isNullOrBlank()
+
+    /** Clear only the JWT token (keeps userId and passwordHash). */
+    fun clearToken() {
+        prefs.edit().remove(KEY_TOKEN).apply()
+    }
 
     /** Clear all session data (logout). */
     fun clear() {

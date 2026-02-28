@@ -68,29 +68,45 @@ class VaultRepository(
     /**
      * Ensure the user is authenticated with the backend.
      *
-     * Flow (transparent to the caller):
-     * 1. If a valid JWT already exists → return immediately.
-     * 2. Generate RSA key pair if needed.
-     * 3. Try to **register** (POST userId + SHA-256 hash + pubkey).
-     * 4. If server replies 409 (already exists) → fall through to login.
-     * 5. **Login** (POST userId + SHA-256 hash) → store JWT.
+     * Resilient flow that handles DB resets, expired JWTs, first-time
+     * registration, and returning users equally well:
      *
-     * @throws Exception on network / connection failure.
+     * 1. **Try login** (most common path — user already registered).
+     *    - 200 → JWT stored, done.
+     *    - 401 → user doesn't exist (or DB was reset) → go to step 2.
+     *    - Network error → propagate.
+     * 2. **Try register** (generates RSA keys, sends userId + hash + pubkey).
+     *    - 201 → go to step 3.
+     *    - 409 → user exists but our password was rejected → irrecoverable.
+     *    - Network error → propagate.
+     * 3. **Login again** after a fresh registration.
+     *    - 200 → done.
+     *    - any error → propagate.
+     *
+     * @throws ApiException with httpCode 409 when the user exists on the server
+     *         but our cached credentials don't match (e.g. different PEPPER).
+     * @throws Exception on network / connection failures.
      */
     suspend fun ensureAuthenticated() {
-        if (isLoggedIn) return
-
         val userId = sessionManager.getUserId()
             ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
         val passwordHash = sessionManager.getPasswordHash()
             ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
 
-        // Ensure RSA keys exist
+        // Ensure RSA keys exist (idempotent)
         rsaKeyManager.generateKeyPair()
-        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
 
-        // Try register first
-        var needsLogin = false
+        // ── Step 1: Try login ────────────────────────────────────────────
+        try {
+            loginWithHash(userId, passwordHash)
+            return // ✓ Already registered, JWT stored
+        } catch (e: ApiException) {
+            if (e.httpCode != 401) throw e
+            // 401 → user not found or DB reset, proceed to register
+        }
+
+        // ── Step 2: Register ─────────────────────────────────────────────
+        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
         try {
             val regResponse = api.register(
                 RegisterRequest(
@@ -101,26 +117,29 @@ class VaultRepository(
             )
             if (!regResponse.isSuccessful) {
                 if (regResponse.code() == 409) {
-                    // Already registered — just login
-                    needsLogin = true
-                } else {
-                    throw ApiException(regResponse.code(), regResponse.errorBody()?.string())
+                    // User exists but login already failed → credentials mismatch
+                    throw ApiException(
+                        409,
+                        "User exists on the server but login was rejected. " +
+                        "Credentials may be inconsistent (server reset with different settings?)."
+                    )
                 }
-            } else {
-                // Registration succeeded — now login to get a JWT
-                needsLogin = true
+                throw ApiException(regResponse.code(), regResponse.errorBody()?.string())
             }
         } catch (e: ApiException) {
-            if (e.httpCode == 409) {
-                needsLogin = true
-            } else {
-                throw e
-            }
+            throw e   // re-throw (409 or other HTTP errors)
         }
 
-        if (needsLogin) {
-            loginWithHash(userId, passwordHash)
-        }
+        // ── Step 3: Login after successful registration ──────────────────
+        loginWithHash(userId, passwordHash)
+    }
+
+    /**
+     * Clear any stored JWT so the next [ensureAuthenticated] will perform
+     * a full login/register cycle. Keeps userId and passwordHash intact.
+     */
+    fun clearSession() {
+        sessionManager.clearToken()
     }
 
     /**
