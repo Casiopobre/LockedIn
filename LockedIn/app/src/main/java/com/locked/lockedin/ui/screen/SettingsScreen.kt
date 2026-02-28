@@ -1,6 +1,8 @@
 package com.locked.lockedin.ui.screen
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -13,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Launch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -33,6 +37,7 @@ import com.locked.lockedin.ui.viewmodel.AppTheme
 import com.locked.lockedin.ui.viewmodel.Language
 import com.locked.lockedin.ui.viewmodel.SettingsViewModel
 import com.locked.lockedin.ui.viewmodel.supportedLanguages
+import androidx.core.net.toUri
 
 // ---------------------------------------------------------------------------
 // SettingsScreen — entry point
@@ -76,7 +81,7 @@ private fun SettingsContent(
                 title = { Text("Ajustes", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
             )
@@ -105,7 +110,23 @@ private fun SettingsContent(
             SettingsSection(title = "Autocompletado de contraseñas") {
                 AutofillSection(
                     onOpenAndroidAutofillSettings = {
-                        context.startActivity(Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE))
+                        // ✅ REQUEST_SET_AUTOFILL_SERVICE necesita la URI del paquete
+                        val intent = Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                            data = "package:${context.packageName}".toUri()
+                        }
+                        // Fallback: si el dispositivo no soporta el intent directo,
+                        // abrimos los ajustes generales de autocompletado
+                        val fallback = Intent(Settings.ACTION_SETTINGS)
+
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            try {
+                                context.startActivity(fallback)
+                            } catch (e2: ActivityNotFoundException) {
+                                // Último recurso: no hacer nada o mostrar un Toast
+                            }
+                        }
                     },
                     onOpenChromeAutofillSettings = {
                         val chooser = Intent.createChooser(
@@ -117,16 +138,6 @@ private fun SettingsContent(
                             "Selecciona el canal de Chrome",
                         )
                         context.startActivity(chooser)
-                    },
-                    onOpenSpecificChrome = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_APPLICATION_PREFERENCES).apply {
-                                addCategory(Intent.CATEGORY_DEFAULT)
-                                addCategory(Intent.CATEGORY_APP_BROWSER)
-                                addCategory(Intent.CATEGORY_PREFERENCE)
-                                setPackage("com.android.chrome")
-                            }
-                        )
                     },
                 )
             }
@@ -286,7 +297,6 @@ private fun LanguageSelector(
 private fun AutofillSection(
     onOpenAndroidAutofillSettings: () -> Unit,
     onOpenChromeAutofillSettings: () -> Unit,
-    onOpenSpecificChrome: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -323,12 +333,6 @@ private fun AutofillSection(
             actionIcon  = Icons.Outlined.OpenInBrowser,
             onAction    = onOpenChromeAutofillSettings,
         )
-
-        OutlinedButton(onClick = onOpenSpecificChrome, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
-            Icon(Icons.Outlined.Launch, null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Abrir directamente Chrome estable", style = MaterialTheme.typography.labelMedium)
-        }
     }
 }
 

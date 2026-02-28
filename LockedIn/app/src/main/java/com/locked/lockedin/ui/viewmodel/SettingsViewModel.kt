@@ -21,9 +21,6 @@ data class Language(val code: String, val displayName: String, val flag: String)
 val supportedLanguages = listOf(
     Language("es", "Español",   "🇪🇸"),
     Language("en", "English",   "🇬🇧"),
-    Language("fr", "Français",  "🇫🇷"),
-    Language("de", "Deutsch",   "🇩🇪"),
-    Language("pt", "Português", "🇵🇹"),
 )
 
 // ─── State ────────────────────────────────────────────────────────────────────
