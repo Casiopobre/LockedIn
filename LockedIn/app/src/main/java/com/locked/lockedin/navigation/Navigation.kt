@@ -36,9 +36,9 @@ import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.ui.screen.*
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
-import com.locked.lockedin.ui.viewmodel.SetupViewModel
-import com.locked.lockedin.ui.viewmodel.UnlockViewModel
 import com.locked.lockedin.ui.screen.UnlockScreen
+import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
+import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
 
 object NavigationRoutes {
     const val SETUP = "setup"
@@ -137,7 +137,6 @@ fun PasswordManagerNavigation(
             startDestination = startDestination,
             modifier = modifier.padding(contentPadding)
         ) {
-            // Setup
             composable(NavigationRoutes.SETUP) {
                 val setupViewModel = remember {
                     SetupViewModel(
@@ -151,7 +150,9 @@ fun PasswordManagerNavigation(
                         navController.navigate(NavigationRoutes.MAIN) {
                             popUpTo(NavigationRoutes.SETUP) { inclusive = true }
                         }
-                    }
+                    },
+                    biometricKeyManager = biometricKeyManager,
+                    activity = activity   // ← use the parameter passed to PasswordManagerNavigation
                 )
             }
 
@@ -225,7 +226,7 @@ fun PasswordManagerNavigation(
             ) {
                 AddEditPasswordScreen(
                     viewModel      = passwordViewModel,
-                    passwordEntry  = selectedPassword,
+                    passwordEntry  = null, // see that (before a selectedPassword were here)
                     onNavigateBack = {
                         passwordViewModel.clearSelectedPassword()
                         navController.popBackStack()

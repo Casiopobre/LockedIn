@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Composable for displaying a password entry item in the list.
@@ -147,7 +150,7 @@ fun PasswordItemPreview() {
                 ),
                 onClick = { }
             )
-            
+
             PasswordItem(
                 password = PasswordEntry(
                     title = "GitHub",
@@ -158,6 +161,10 @@ fun PasswordItemPreview() {
                 onClick = { }
             )
         }
+    }
+}
+
+@Composable
 private fun PwnedBadge(count: Int) {
     Surface(
         shape  = MaterialTheme.shapes.small,
