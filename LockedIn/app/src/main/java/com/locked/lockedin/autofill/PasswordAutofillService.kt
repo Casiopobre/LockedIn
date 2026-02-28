@@ -11,9 +11,9 @@ import com.locked.lockedin.data.database.PasswordDatabase
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.VaultKeyHolder
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -28,35 +28,29 @@ class PasswordAutofillService : AutofillService() {
         cancellationSignal: CancellationSignal,
         callback: FillCallback
     ) {
-        // 1. Obtener la estructura de la pantalla actual
         val structure = request.fillContexts.lastOrNull()?.structure
             ?: return callback.onSuccess(null)
 
-        // 2. Parsear los campos de la pantalla
         val parsed = AutofillHelper.parseStructure(structure)
 
-        // Si no hay campos de contraseña, no hacemos nada
         if (parsed.passwordNodes.isEmpty() && parsed.usernameNodes.isEmpty()) {
             return callback.onSuccess(null)
         }
 
-        // 3. Buscar contraseñas relevantes en la base de datos
         val entries = runBlocking {
             findMatchingEntries(parsed.packageName, parsed.webDomain)
         }
 
-        // 4. Construir el FillResponse
         val responseBuilder = FillResponse.Builder()
 
-        // 4a. Si el vault está bloqueado → pedir autenticación
+        // If the vault is locked, ask for authentication
         if (!VaultKeyHolder.isUnlocked) {
             val authResponse = buildLockedResponse(parsed) ?: return callback.onSuccess(null)
             return callback.onSuccess(authResponse)
         }
 
-        // 4b. Vault desbloqueado → añadir datasets
+        // Add existing matching entries
         if (entries.isEmpty()) {
-            // Sin coincidencias: ofrecer opción de buscar manualmente
             val manualDataset = buildManualSearchDataset(parsed)
             if (manualDataset != null) responseBuilder.addDataset(manualDataset)
         } else {
@@ -66,14 +60,19 @@ class PasswordAutofillService : AutofillService() {
             }
         }
 
-        // 4c. Configurar SaveInfo para guardar nuevas contraseñas
+        // ── NEW: Offer "Generate secure password" when we detect a registration form ──
+        if (isRegistrationForm(parsed)) {
+            val generateDataset = buildGeneratePasswordDataset(parsed)
+            if (generateDataset != null) responseBuilder.addDataset(generateDataset)
+        }
+
+        // Configure SaveInfo so Android offers to save new credentials
         buildSaveInfo(parsed)?.let { responseBuilder.setSaveInfo(it) }
 
         callback.onSuccess(responseBuilder.build())
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        // Cuando el usuario guarda una nueva contraseña detectada por el sistema
         val structure = request.fillContexts.lastOrNull()?.structure ?: run {
             callback.onSuccess()
             return
@@ -86,13 +85,116 @@ class PasswordAutofillService : AutofillService() {
                 saveNewEntry(parsed, structure)
                 callback.onSuccess()
             } catch (e: Exception) {
-                callback.onFailure("Error al guardar: ${e.message}")
+                callback.onFailure("Error saving: ${e.message}")
             }
         }
     }
 
     // ──────────────────────────────────────────────
-    // Funciones privadas auxiliares
+    // NEW: Registration-form detection
+    // ──────────────────────────────────────────────
+
+    /**
+     * Heuristic: a form is considered "registration" if it has at least
+     * one password field. Extra confidence if there are 2+ password nodes
+     * (password + confirm) or if the web domain / package has no saved entries.
+     */
+    private fun isRegistrationForm(parsed: ParsedFields): Boolean {
+        // Always offer generation when there's a password field and vault is unlocked
+        return parsed.passwordNodes.isNotEmpty()
+    }
+
+    // ──────────────────────────────────────────────
+    // NEW: Generate-password dataset
+    // ──────────────────────────────────────────────
+
+    /**
+     * Builds a Dataset that, when tapped, fills every password field with
+     * a freshly generated secure password.
+     */
+    private fun buildGeneratePasswordDataset(parsed: ParsedFields): Dataset? {
+        val passwordIds = parsed.passwordNodes.mapNotNull { it.autofillId }
+        if (passwordIds.isEmpty()) return null
+
+        val crypto = CryptoManager()
+        val generatedPassword = crypto.generateSecurePassword(
+            length = 20,
+            includeUppercase = true,
+            includeLowercase = true,
+            includeNumbers = true,
+            includeSymbols = true
+        )
+
+        val presentation = createPresentation(
+            "🔐 Generate secure password",
+            "Tap to fill with a strong password"
+        )
+
+        val builder = Dataset.Builder(presentation)
+
+        // Fill every password field with the same generated password
+        passwordIds.forEach { id ->
+            builder.setValue(id, AutofillValue.forText(generatedPassword))
+        }
+
+        // Optionally leave username fields untouched (user types their own)
+        return builder.build()
+    }
+
+    // ──────────────────────────────────────────────
+    // UPDATED: saveNewEntry — now actually saves
+    // ──────────────────────────────────────────────
+
+    /**
+     * Extracts the username & password the user just typed/selected,
+     * encrypts the password, and inserts a new [PasswordEntry] into the vault DB.
+     */
+    private suspend fun saveNewEntry(
+        parsed: ParsedFields,
+        structure: android.app.assist.AssistStructure
+    ) {
+        if (!VaultKeyHolder.isUnlocked) return  // Cannot save without the key
+
+        // 1. Extract the plaintext values the user entered
+        val username = parsed.usernameNodes
+            .firstOrNull()
+            ?.text
+            ?.toString()
+            .orEmpty()
+
+        val plainPassword = parsed.passwordNodes
+            .firstOrNull()
+            ?.text
+            ?.toString()
+            ?: return  // Nothing to save if there's no password
+
+        // 2. Determine a human-readable title from the web domain or package
+        val title = parsed.webDomain
+            ?: parsed.packageName?.split(".")?.takeLast(2)?.joinToString(".")
+            ?: "Unknown site"
+
+        val website = parsed.webDomain ?: ""
+
+        // 3. Encrypt the password
+        val crypto = CryptoManager()
+        val encryptedPassword = crypto.encryptPassword(plainPassword)
+
+        // 4. Persist to the local Room database
+        val db = PasswordDatabase.getDatabase(applicationContext)
+        val entry = PasswordEntry(
+            title = title,
+            username = username,
+            encryptedPassword = encryptedPassword,
+            website = website,
+            // If your PasswordEntry has other fields (notes, group, etc.) set defaults:
+            // notes = "",
+            // groupId = null,
+        )
+        db.passwordDao().insertPassword(entry)
+    }
+
+    // ──────────────────────────────────────────────
+    // Existing private helpers (unchanged)
     // ──────────────────────────────────────────────
 
     private suspend fun findMatchingEntries(
@@ -102,12 +204,9 @@ class PasswordAutofillService : AutofillService() {
         if (!VaultKeyHolder.isUnlocked) return emptyList()
 
         val db = PasswordDatabase.getDatabase(applicationContext)
-        // ✅ Recoge el Flow a una List antes de filtrar
         val allEntries = db.passwordDao().getAllPasswords().first()
-        // Si getAllPasswords() ya devuelve List directamente, simplifica a:
-        // val allEntries = db.passwordDao().getAllPasswords()
 
-        return allEntries.filter { entry ->          // ✅ Ahora filter es sobre List<PasswordEntry>
+        return allEntries.filter { entry ->
             val websiteLower = entry.website.lowercase()
             val titleLower = entry.title.lowercase()
 
@@ -124,7 +223,7 @@ class PasswordAutofillService : AutofillService() {
                                     )
                         }
                     } == true
-        }.take(5)                                    // ✅ take sobre List funciona
+        }.take(5)
     }
 
     private fun buildDataset(
@@ -156,16 +255,14 @@ class PasswordAutofillService : AutofillService() {
 
         return datasetBuilder.build()
     }
+
     private fun buildLockedResponse(parsed: ParsedFields): FillResponse? {
-        // Construimos un FillResponse "vacío" que al seleccionarlo abre la auth
         val allIds = (parsed.usernameNodes + parsed.passwordNodes)
             .mapNotNull { it.autofillId }
             .toTypedArray()
 
         if (allIds.isEmpty()) return null
 
-        // Creamos un FillResponse temporal con los campos sin valor
-        // El usuario deberá autenticarse para ver las contraseñas
         val tempResponseBuilder = FillResponse.Builder()
 
         val authIntent = Intent(this, AutofillAuthActivity::class.java)
@@ -174,7 +271,7 @@ class PasswordAutofillService : AutofillService() {
             PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val presentation = createPresentation("🔒 Vault bloqueado", "Toca para desbloquear")
+        val presentation = createPresentation("🔒 Vault locked", "Tap to unlock")
 
         val datasetBuilder = Dataset.Builder(presentation)
             .setAuthentication(pendingIntent.intentSender)
@@ -199,7 +296,7 @@ class PasswordAutofillService : AutofillService() {
             PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val presentation = createPresentation("🔑 Password Manager", "Buscar manualmente...")
+        val presentation = createPresentation("🔑 Password Manager", "Search manually...")
         val builder = Dataset.Builder(presentation).setAuthentication(pendingIntent.intentSender)
         allIds.forEach { id -> builder.setValue(id, AutofillValue.forText("")) }
 
@@ -219,19 +316,9 @@ class PasswordAutofillService : AutofillService() {
     }
 
     private fun createPresentation(title: String, subtitle: String): RemoteViews {
-        // RemoteViews es necesario para mostrar sugerencias fuera de tu app
         return RemoteViews(packageName, R.layout.autofill_list_item).apply {
             setTextViewText(R.id.autofill_item_title, title)
             setTextViewText(R.id.autofill_item_subtitle, subtitle)
         }
-    }
-
-    private suspend fun saveNewEntry(
-        parsed: ParsedFields,
-        structure: android.app.assist.AssistStructure
-    ) {
-        // Extrae los valores introducidos por el usuario
-        // para guardarlos como nueva entrada
-        // Implementa según tu PasswordRepository
     }
 }

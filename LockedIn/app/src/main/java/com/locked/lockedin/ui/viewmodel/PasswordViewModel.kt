@@ -117,6 +117,35 @@ class PasswordViewModel(
         }
     }
 
+    // It mirrors the addPassword signature so the UI can call it uniformly.
+    fun updatePasswordEntry(
+        id: Long,
+        title: String,
+        username: String,
+        password: String,
+        website: String = "",
+        notes: String = "",
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.updatePasswordEntry(
+                    id       = id,
+                    title    = title,
+                    username = username,
+                    password = password,
+                    website  = website,
+                    notes    = notes
+                )
+                _uiState.update { it.copy(successMessage = "Password updated") }
+                onResult(Result.success(Unit))
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message) }
+                onResult(Result.failure(e))
+            }
+        }
+    }
+
     fun updatePassword(
         passwordEntry: PasswordEntry,
         title: String,
