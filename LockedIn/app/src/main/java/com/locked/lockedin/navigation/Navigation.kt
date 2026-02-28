@@ -54,8 +54,11 @@ object NavigationRoutes {
     const val ADD_PASSWORD = "add_password"
     const val EDIT_PASSWORD = "edit_password/{passwordId}"
 
+    const val ADD_GROUP_PASSWORD = "add_group_password/{groupId}"
+
     fun editPassword(passwordId: Long) = "edit_password/$passwordId"
     fun manageGroup(groupId: String, groupName: String) = "manage_group/$groupId/$groupName"
+    fun addGroupPassword(groupId: String) = "add_group_password/$groupId"
 }
 
 enum class Destination(
@@ -209,7 +212,6 @@ fun PasswordManagerNavigation(
                 )
             }
 
-            // Manage Group
             composable(
                 route = NavigationRoutes.MANAGE_GROUP,
                 arguments = listOf(
@@ -223,7 +225,25 @@ fun PasswordManagerNavigation(
                     groupId = groupId,
                     groupName = groupName,
                     groupViewModel = groupViewModel,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onAddPasswordClick = {                                      // ADD THIS
+                        navController.navigate(NavigationRoutes.addGroupPassword(groupId))
+                    }
+                )
+            }
+
+            // Add Group Password (group-only, not saved to personal vault)
+            dialog(
+                route = NavigationRoutes.ADD_GROUP_PASSWORD,
+                arguments = listOf(navArgument("groupId") { type = NavType.StringType }),
+                dialogProperties = DialogProperties(usePlatformDefaultWidth = false)
+            ) { backStackEntry ->
+                val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+
+                AddGroupPasswordScreen(
+                    groupViewModel = groupViewModel,
+                    groupId = groupId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

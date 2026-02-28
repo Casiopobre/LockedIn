@@ -154,10 +154,27 @@ class GroupViewModel(
             try {
                 val response = vaultRepository.createGroup(name)
                 _uiState.update { it.copy(successMessage = "Group created successfully") }
-                loadGroups() // refresh
+                loadGroups()
                 onResult(Result.success(response.id))
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Failed to create group: ${e.message}") }
+                onResult(Result.failure(e))
+            } finally {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun deleteGroup(groupId: String, onResult: (Result<Unit>) -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                vaultRepository.deleteGroup(groupId)
+                _uiState.update { it.copy(successMessage = "Group deleted") }
+                loadGroups()
+                onResult(Result.success(Unit))
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to delete group: ${e.message}") }
                 onResult(Result.failure(e))
             } finally {
                 _uiState.update { it.copy(isLoading = false) }
@@ -198,13 +215,13 @@ class GroupViewModel(
                         null
                     }
                     GroupPasswordItem(
-                        id = pw.id,
-                        groupId = pw.groupId,
-                        createdBy = pw.createdBy,
-                        label = pw.label,
+                        id            = pw.id,
+                        groupId       = pw.groupId,
+                        createdBy     = pw.createdBy,
+                        label         = pw.label,
                         decryptedData = decrypted,
-                        createdAt = pw.createdAt,
-                        updatedAt = pw.updatedAt
+                        createdAt     = pw.createdAt,
+                        updatedAt     = pw.updatedAt
                     )
                 }
             } catch (e: Exception) {
@@ -226,7 +243,7 @@ class GroupViewModel(
             try {
                 vaultRepository.sharePassword(groupId, label, plainData)
                 _uiState.update { it.copy(successMessage = "Password shared successfully") }
-                loadGroupPasswords(groupId) // refresh
+                loadGroupPasswords(groupId)
                 onResult(Result.success(Unit))
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Failed to share password: ${e.message}") }
