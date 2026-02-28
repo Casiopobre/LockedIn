@@ -1,0 +1,78 @@
+# =========================
+# ANDROID / GRADLE
+# =========================
+**/build/
+.gradle/
+.cxx/
+.externalNativeBuild/
+
+# APK / AAB
+*.apk
+*.aab
+
+# Dex
+*.dex
+
+# Logs
+*.log
+
+# =========================
+# GRADLE WRAPPER / LOCAL
+# =========================
+local.properties
+gradle-app.setting
+
+# =========================
+# ANDROID STUDIO / INTELLIJ
+# =========================
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Android Studio generated
+captures/
+.navigation/
+render.experimental.xml
+
+# =========================
+# KOTLIN
+# =========================
+*.class
+.kotlin/
+
+# =========================
+# VS CODE
+# =========================
+.vscode/
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# TEMP / CACHE
+# =========================
+*.tmp
+*.swp
+*.swo
+
+# =========================
+# REPORTS (opcional)
+# =========================
+**/reports/problems/
+
+# =========================
+# SECURITY (por si acaso)
+# =========================
+*.keystore
+*.jks
+
+# =========================
+# NODE / BACKEND (si luego lo usas)
+# =========================
+node_modules/
+.env
