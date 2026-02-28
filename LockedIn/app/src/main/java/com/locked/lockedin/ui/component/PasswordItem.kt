@@ -45,16 +45,6 @@ fun PasswordItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Selection indicator (inspired by the square on the left)
-            // Using a subtle rounded box that acts as a visual anchor
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
 
             // 2. Refined Boxed Info (Main Identity)
             Surface(
