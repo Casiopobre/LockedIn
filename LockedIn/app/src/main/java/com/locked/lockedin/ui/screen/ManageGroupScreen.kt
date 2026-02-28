@@ -1,7 +1,10 @@
 package com.locked.lockedin.ui.screen
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,13 +42,13 @@ fun ManageGroupScreen(
     groupName: String,
     groupViewModel: GroupViewModel,
     onBackClick: () -> Unit,
+    onAddPasswordClick: () -> Unit,         // ← navigates to AddGroupPasswordScreen
     modifier: Modifier = Modifier
 ) {
     val uiState by groupViewModel.uiState.collectAsState()
     val groupPasswords by groupViewModel.groupPasswords.collectAsState()
 
     var showAddMemberDialog by remember { mutableStateOf(false) }
-    var showSharePasswordDialog by remember { mutableStateOf(false) }
     var showDeletePasswordDialog by remember { mutableStateOf<GroupPasswordItem?>(null) }
 
     // Load passwords on first composition
@@ -59,12 +62,12 @@ fun ManageGroupScreen(
         isLoading = uiState.isLoading,
         onBackClick = onBackClick,
         onAddMemberClick = { showAddMemberDialog = true },
-        onAddPasswordClick = { showSharePasswordDialog = true },
+        onAddPasswordClick = onAddPasswordClick,            // ← wired directly
         onDeletePasswordClick = { pw -> showDeletePasswordDialog = pw },
         modifier = modifier
     )
 
-    // Error / success snackbar (simple approach: show as dialogs)
+    // Error snackbar
     uiState.errorMessage?.let { msg ->
         AlertDialog(
             onDismissRequest = { groupViewModel.clearMessages() },
@@ -88,20 +91,6 @@ fun ManageGroupScreen(
                 groupViewModel.addMember(groupId, phoneNumber) { result ->
                     if (result.isSuccess) {
                         showAddMemberDialog = false
-                    }
-                }
-            }
-        )
-    }
-
-    // ── Share password dialog ───────────────────────────────────────────────
-    if (showSharePasswordDialog) {
-        SharePasswordDialog(
-            onDismiss = { showSharePasswordDialog = false },
-            onShare = { label, plainData ->
-                groupViewModel.sharePassword(groupId, label, plainData) { result ->
-                    if (result.isSuccess) {
-                        showSharePasswordDialog = false
                     }
                 }
             }
@@ -168,7 +157,10 @@ fun AddMemberDialog(
                 Surface(
                     shape = RoundedCornerShape(15.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -183,7 +175,9 @@ fun AddMemberDialog(
                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
                             decorationBox = { innerTextField ->
                                 Box {
                                     if (phoneNumber.isEmpty()) {
@@ -212,13 +206,15 @@ fun AddMemberDialog(
                             containerColor = Color(0xFFFFE599).copy(alpha = 0.8f)
                         )
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
+                        Icon(
+                            Icons.AutoMirrored.Filled.Reply,
+                            contentDescription = "Go back",
+                            tint = Color.Black
+                        )
                     }
 
                     Button(
-                        onClick = {
-                            if (phoneNumber.isNotBlank()) onAdd(phoneNumber)
-                        },
+                        onClick = { if (phoneNumber.isNotBlank()) onAdd(phoneNumber) },
                         enabled = phoneNumber.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -231,171 +227,6 @@ fun AddMemberDialog(
                             .padding(start = 12.dp)
                     ) {
                         Text("Add Member", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── Share Password Dialog ───────────────────────────────────────────────────
-
-@Composable
-fun SharePasswordDialog(
-    onDismiss: () -> Unit,
-    onShare: (label: String, plainData: String) -> Unit
-) {
-    var label by remember { mutableStateOf("") }
-    var passwordData by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier
-                .wrapContentSize()
-                .padding(16.dp)
-                .clip(RoundedCornerShape(12.dp)),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "SHARE PASSWORD",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "New shared password",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Label field
-                Surface(
-                    shape = RoundedCornerShape(15.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                        Text(
-                            "Label",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        BasicTextField(
-                            value = label,
-                            onValueChange = { label = it },
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                            decorationBox = { innerTextField ->
-                                Box {
-                                    if (label.isEmpty()) {
-                                        Text(
-                                            "e.g. GitHub - team account",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                    innerTextField()
-                                }
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Password data field
-                Surface(
-                    shape = RoundedCornerShape(15.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Password / Data",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            BasicTextField(
-                                value = if (isPasswordVisible) passwordData else "•".repeat(passwordData.length.coerceAtMost(20)),
-                                onValueChange = { if (isPasswordVisible) passwordData = it },
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    color = MaterialTheme.colorScheme.onSurface
-                                ),
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                decorationBox = { innerTextField ->
-                                    Box {
-                                        if (passwordData.isEmpty()) {
-                                            Text(
-                                                "secret data to share",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                            )
-                                        }
-                                        innerTextField()
-                                    }
-                                }
-                            )
-                        }
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                            Icon(
-                                if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Toggle visibility",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    FilledTonalIconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(56.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = Color(0xFFFFE599).copy(alpha = 0.8f)
-                        )
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
-                    }
-
-                    Button(
-                        onClick = {
-                            if (label.isNotBlank() && passwordData.isNotBlank()) {
-                                onShare(label, passwordData)
-                            }
-                        },
-                        enabled = label.isNotBlank() && passwordData.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier
-                            .height(56.dp)
-                            .weight(1f)
-                            .padding(start = 12.dp)
-                    ) {
-                        Text("Share Password", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -448,7 +279,10 @@ fun ManageGroupScreenContent(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Scrollable content
-                Column(modifier = Modifier.verticalScroll(rememberScrollState()).weight(1f)) {
+                Column(modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .weight(1f)
+                ) {
 
                     // --- MEMBERS SECTION ---
                     Text(
@@ -500,7 +334,9 @@ fun ManageGroupScreenContent(
 
                     if (isLoading) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
@@ -527,7 +363,7 @@ fun ManageGroupScreenContent(
                 }
             }
 
-            // Back button moved to bottom right
+            // Back button — bottom right
             FilledTonalIconButton(
                 onClick = onBackClick,
                 modifier = Modifier
@@ -544,11 +380,15 @@ fun ManageGroupScreenContent(
     }
 }
 
+
 @Composable
 private fun GroupPasswordRow(
     password: GroupPasswordItem,
     onDeleteClick: () -> Unit
 ) {
+    var isVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -560,6 +400,7 @@ private fun GroupPasswordRow(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -575,6 +416,7 @@ private fun GroupPasswordRow(
 
             Spacer(Modifier.width(12.dp))
 
+            // Label + password value
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = password.label,
@@ -584,13 +426,42 @@ private fun GroupPasswordRow(
                 )
                 password.decryptedData?.let { data ->
                     Text(
-                        text = "•".repeat(data.length.coerceIn(6, 20)),
+                        text = if (isVisible) data
+                        else "•".repeat(data.length.coerceIn(6, 20)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
+            // Show / hide button
+            password.decryptedData?.let { data ->
+                IconButton(onClick = { isVisible = !isVisible }) {
+                    Icon(
+                        imageVector = if (isVisible) Icons.Default.VisibilityOff
+                        else Icons.Default.Visibility,
+                        contentDescription = if (isVisible) "Hide password" else "Show password",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // Copy button
+                IconButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Password", data)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "${password.label} copied to clipboard", Toast.LENGTH_SHORT).show()
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy password",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Delete button
             IconButton(onClick = onDeleteClick) {
                 Icon(
                     Icons.Default.DeleteOutline,
@@ -601,6 +472,8 @@ private fun GroupPasswordRow(
         }
     }
 }
+
+// ── ActionSmallButton ───────────────────────────────────────────────────────
 
 @Composable
 private fun ActionSmallButton(
@@ -627,6 +500,8 @@ private fun ActionSmallButton(
         Text(text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
+
+// ── Preview ─────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable

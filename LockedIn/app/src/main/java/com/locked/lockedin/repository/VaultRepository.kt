@@ -171,6 +171,15 @@ class VaultRepository(
         return response.body()!!
     }
 
+    suspend fun deleteGroup(groupId: String) {
+        val token = sessionManager.bearerToken()
+            ?: throw IllegalStateException("Not authenticated")
+        val response = api.deleteGroup(groupId, token)
+        if (!response.isSuccessful) {
+            throw Exception("Failed to delete group: ${response.code()} ${response.message()}")
+        }
+    }
+
     /**
      * Add a member to a group.
      *
