@@ -20,10 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.locked.lockedin.R
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
@@ -75,8 +77,8 @@ fun AddEditPasswordScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Confirm Delete") },
-            text = { Text("Are you sure you want to delete this password?") },
+            title = { Text(stringResource(R.string.confirm_delete_msg)) },
+            text = { Text(stringResource(R.string.password_delete_confirmation_msg)) },
             confirmButton = {
                 TextButton(onClick = {
                     passwordEntry?.let { entry ->
@@ -126,7 +128,7 @@ private fun AddEditPasswordContent(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "PASSWORD FOR",
+                        text = stringResource(R.string.password_editor_title),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -231,8 +233,15 @@ private fun AddEditPasswordContent(
                 IconButton(
                     onClick = { },
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f), CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), CircleShape)
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                            CircleShape
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
+                            CircleShape
+                        )
                 ) {
                     Icon(Icons.Default.DeleteOutline, contentDescription = "Delete from group", tint = MaterialTheme.colorScheme.error)
                 }
@@ -248,16 +257,19 @@ private fun AddEditPasswordContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Go back
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    FilledTonalIconButton(
-                        onClick = onGoBack,
-                        modifier = Modifier.size(56.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = Color(0xFFFFE599).copy(alpha = 0.8f) // Keeping the yellow but subtle
-                        )
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledTonalIconButton(
+                            onClick = onGoBack,
+                            modifier = Modifier.size(56.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xFFFFE599).copy(alpha = 0.8f)
+                            )
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
+                        }
                     }
+                    Spacer(modifier = Modifier.width(16.dp))
                 }
 
                 if (isEditing) {
@@ -271,7 +283,11 @@ private fun AddEditPasswordContent(
                         modifier = Modifier
                             .height(64.dp)
                             .fillMaxWidth(0.8f)
-                            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                                RoundedCornerShape(24.dp)
+                            )
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.DeleteOutline, contentDescription = null)
@@ -293,7 +309,11 @@ private fun AddEditPasswordContent(
                         modifier = Modifier
                             .fillMaxWidth(0.8f)
                             .height(64.dp)
-                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                RoundedCornerShape(24.dp)
+                            )
                     ) {
                         Text("Save New Password", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
@@ -332,7 +352,9 @@ private fun FormSection(
                 modifier = Modifier.weight(1f)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Column(modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)) {
                         BasicTextField(
                             value = value,
                             onValueChange = onValueChange,
@@ -354,7 +376,11 @@ private fun FormSection(
                 onClick = onIconClick,
                 modifier = Modifier
                     .size(48.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        RoundedCornerShape(12.dp)
+                    )
             ) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             }
