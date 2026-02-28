@@ -2,7 +2,7 @@ package com.locked.lockedin.security
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 import android.util.Base64
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -15,13 +15,15 @@ import javax.crypto.spec.SecretKeySpec
  */
 class MasterKeyManager(context: Context) {
 
-    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+    private val mainKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
 
     // EncryptedSharedPreferences stores the salt + hash securely on-device
     private val prefs = EncryptedSharedPreferences.create(
-        "master_key_prefs",
-        masterKeyAlias,
         context,
+        "master_key_prefs",
+        mainKey,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
