@@ -51,7 +51,96 @@ class VaultRepository(
     private val api: VaultApiService = ApiClient.service
 ) {
 
+    // ── Credential caching (offline-first) ───────────────────────────────
+
+    /**
+     * Cache the user's credentials locally so we can register/login later
+     * when the user opens the Groups section.
+     * Called during Setup and Unlock — no network required.
+     */
+    fun cacheCredentials(userId: String, masterPassword: String) {
+        sessionManager.saveUserId(userId)
+        sessionManager.savePasswordHash(PasswordHasher.sha256(masterPassword))
+    }
+
     // ── Auth ────────────────────────────────────────────────────────────────
+
+    /**
+     * Ensure the user is authenticated with the backend.
+     *
+     * Resilient flow that handles DB resets, expired JWTs, first-time
+     * registration, and returning users equally well:
+     *
+     * 1. **Try login** (most common path — user already registered).
+     *    - 200 → JWT stored, done.
+     *    - 401 → user doesn't exist (or DB was reset) → go to step 2.
+     *    - Network error → propagate.
+     * 2. **Try register** (generates RSA keys, sends userId + hash + pubkey).
+     *    - 201 → go to step 3.
+     *    - 409 → user exists but our password was rejected → irrecoverable.
+     *    - Network error → propagate.
+     * 3. **Login again** after a fresh registration.
+     *    - 200 → done.
+     *    - any error → propagate.
+     *
+     * @throws ApiException with httpCode 409 when the user exists on the server
+     *         but our cached credentials don't match (e.g. different PEPPER).
+     * @throws Exception on network / connection failures.
+     */
+    suspend fun ensureAuthenticated() {
+        val userId = sessionManager.getUserId()
+            ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
+        val passwordHash = sessionManager.getPasswordHash()
+            ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
+
+        // Ensure RSA keys exist (idempotent)
+        rsaKeyManager.generateKeyPair()
+
+        // ── Step 1: Try login ────────────────────────────────────────────
+        try {
+            loginWithHash(userId, passwordHash)
+            return // ✓ Already registered, JWT stored
+        } catch (e: ApiException) {
+            if (e.httpCode != 401) throw e
+            // 401 → user not found or DB reset, proceed to register
+        }
+
+        // ── Step 2: Register ─────────────────────────────────────────────
+        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
+        try {
+            val regResponse = api.register(
+                RegisterRequest(
+                    userId = userId,
+                    passwordHash = passwordHash,
+                    publicKey = publicKeyPem
+                )
+            )
+            if (!regResponse.isSuccessful) {
+                if (regResponse.code() == 409) {
+                    // User exists but login already failed → credentials mismatch
+                    throw ApiException(
+                        409,
+                        "User exists on the server but login was rejected. " +
+                        "Credentials may be inconsistent (server reset with different settings?)."
+                    )
+                }
+                throw ApiException(regResponse.code(), regResponse.errorBody()?.string())
+            }
+        } catch (e: ApiException) {
+            throw e   // re-throw (409 or other HTTP errors)
+        }
+
+        // ── Step 3: Login after successful registration ──────────────────
+        loginWithHash(userId, passwordHash)
+    }
+
+    /**
+     * Clear any stored JWT so the next [ensureAuthenticated] will perform
+     * a full login/register cycle. Keeps userId and passwordHash intact.
+     */
+    fun clearSession() {
+        sessionManager.clearToken()
+    }
 
     /**
      * Register a new user.
@@ -93,7 +182,13 @@ class VaultRepository(
      */
     suspend fun login(userId: String, masterPassword: String): LoginResponse {
         val passwordHash = PasswordHasher.sha256(masterPassword)
+        return loginWithHash(userId, passwordHash)
+    }
 
+    /**
+     * Internal login using a pre-computed SHA-256 hash.
+     */
+    private suspend fun loginWithHash(userId: String, passwordHash: String): LoginResponse {
         val response = api.login(
             LoginRequest(userId = userId, passwordHash = passwordHash)
         )
@@ -169,6 +264,15 @@ class VaultRepository(
         }
 
         return response.body()!!
+    }
+
+    suspend fun deleteGroup(groupId: String) {
+        val token = sessionManager.bearerToken()
+            ?: throw IllegalStateException("Not authenticated")
+        val response = api.deleteGroup(groupId, token)
+        if (!response.isSuccessful) {
+            throw Exception("Failed to delete group: ${response.code()} ${response.message()}")
+        }
     }
 
     /**

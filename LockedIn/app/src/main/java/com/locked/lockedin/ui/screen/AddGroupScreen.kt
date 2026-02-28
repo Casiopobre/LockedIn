@@ -24,34 +24,37 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.locked.lockedin.ui.theme.LockedInTheme
+import androidx.compose.ui.unit.sp
 
 /**
  * Screen for adding a new group, styled as a modal window
  * matching the aesthetic of AddEditPasswordScreen.
+ *
+ * NOTE: This composable is meant to be used inside a navigation `dialog()` route,
+ * which already provides the Dialog wrapper. Do NOT wrap in another Dialog.
  */
 @Composable
 fun AddGroupScreen(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
     var groupName by remember { mutableStateOf("") }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        AddGroupContent(
-            groupName = groupName,
-            onGroupNameChange = { groupName = it },
-            onGoBack = onDismiss,
-            onSaveClick = {
-                if (groupName.isNotBlank()) {
-                    onSave(groupName)
-                }
+    AddGroupContent(
+        groupName = groupName,
+        onGroupNameChange = { groupName = it },
+        onGoBack = onDismiss,
+        isLoading = isLoading,
+        errorMessage = errorMessage,
+        onSaveClick = {
+            if (groupName.isNotBlank()) {
+                onSave(groupName)
             }
-        )
-    }
+        }
+    )
 }
 
 @Composable
@@ -59,7 +62,9 @@ private fun AddGroupContent(
     groupName: String,
     onGroupNameChange: (String) -> Unit,
     onGoBack: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    isLoading: Boolean = false,
+    errorMessage: String? = null
 ) {
     Surface(
         modifier = Modifier
@@ -86,7 +91,7 @@ private fun AddGroupContent(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    
+
                     BasicTextField(
                         value = groupName,
                         onValueChange = onGroupNameChange,
@@ -115,7 +120,7 @@ private fun AddGroupContent(
                         }
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Box(
@@ -159,7 +164,7 @@ private fun AddGroupContent(
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         )
                     }
-                    
+
                     IconButton(
                         onClick = { /* Focus field */ },
                         modifier = Modifier
@@ -173,6 +178,23 @@ private fun AddGroupContent(
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                }
+            }
+
+            // Error message
+            errorMessage?.let { msg ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = msg,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
                 }
             }
 
@@ -204,7 +226,7 @@ private fun AddGroupContent(
 
                 Button(
                     onClick = onSaveClick,
-                    enabled = groupName.isNotBlank(),
+                    enabled = groupName.isNotBlank() && !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -213,13 +235,21 @@ private fun AddGroupContent(
                         .fillMaxWidth(0.7f)
                         .height(64.dp)
                         .border(
-                            1.dp, 
-                            if (groupName.isNotBlank()) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent, 
+                            1.dp,
+                            if (groupName.isNotBlank()) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent,
                             RoundedCornerShape(24.dp)
                         ),
                     shape = RoundedCornerShape(24.dp)
                 ) {
-                    Text("Save New Group", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Save New Group", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
