@@ -1,27 +1,37 @@
 package com.locked.lockedin.ui.screen
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
-import androidx.compose.runtime.mutableIntStateOf
 
 /**
- * Screen for adding or editing a password entry
+ * Screen for adding or editing a password entry, styled to match the refined
+ * Material 3 aesthetic of PasswordItem, while keeping the title as plain text.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPasswordScreen(
     viewModel: PasswordViewModel,
@@ -31,354 +41,350 @@ fun AddEditPasswordScreen(
 ) {
     var title by remember { mutableStateOf(passwordEntry?.title ?: "") }
     var username by remember { mutableStateOf(passwordEntry?.username ?: "") }
-    var password by remember { 
+    var password by remember {
         mutableStateOf(
-            passwordEntry?.let { 
+            passwordEntry?.let {
                 viewModel.decryptPassword(it.encryptedPassword) ?: ""
             } ?: ""
-        ) 
+        )
     }
-    var website by remember { mutableStateOf(passwordEntry?.website ?: "") }
-    var notes by remember { mutableStateOf(passwordEntry?.notes ?: "") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showGenerateDialog by remember { mutableStateOf(false) }
     
     val isEditing = passwordEntry != null
-    val uiState by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
-    
-    // Form validation
-    val isFormValid = title.isNotBlank() && 
-                     username.isNotBlank() && 
-                     password.isNotBlank()
-    
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-    ) {
-        // Top App Bar
-        TopAppBar(
-            title = title,
-            isEditing = isEditing,
-            isFormValid = isFormValid,
-            isLoading = uiState.isLoading,
-            onNavigateBack = onNavigateBack,
-            onSave = {
-                if (isEditing) {
-                    passwordEntry?.let { entry ->
-                        viewModel.updatePassword(
-                            entry, title, username, password, website, notes
-                        ) { result ->
-                            if (result.isSuccess) onNavigateBack()
-                        }
-                    }
-                } else {
-                    viewModel.addPassword(
-                        title, username, password, website, notes
-                    ) { result ->
-                        if (result.isSuccess) onNavigateBack()
-                    }
-                }
-            }
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Form Fields
-        PasswordForm(
-            title = title,
-            username = username,
-            password = password,
-            website = website,
-            notes = notes,
-            isPasswordVisible = isPasswordVisible,
-            onTitleChange = { title = it },
-            onUsernameChange = { username = it },
-            onPasswordChange = { password = it },
-            onWebsiteChange = { website = it },
-            onNotesChange = { notes = it },
-            onPasswordVisibilityToggle = { isPasswordVisible = !isPasswordVisible },
-            onGeneratePassword = { showGenerateDialog = true }
-        )
-        
-        // Delete button for editing mode
-        if (isEditing) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(
-                onClick = { showDeleteDialog = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Delete Password")
-            }
-        }
-    }
-    
-    // Delete confirmation dialog
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Password") },
-            text = { Text("Are you sure you want to delete this password? This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        passwordEntry?.let { entry ->
-                            viewModel.deletePassword(entry) { result ->
-                                if (result.isSuccess) {
-                                    showDeleteDialog = false
-                                    onNavigateBack()
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-    
-    // Generate password dialog
-    if (showGenerateDialog) {
-        GeneratePasswordDialog(
-            viewModel = viewModel,
-            onDismiss = { showGenerateDialog = false },
-            onPasswordGenerated = { generatedPassword ->
-                password = generatedPassword
-                showGenerateDialog = false
-            }
-        )
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopAppBar(
-    title: String,
-    isEditing: Boolean,
-    isFormValid: Boolean,
-    isLoading: Boolean,
-    onNavigateBack: () -> Unit,
-    onSave: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onNavigateBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-        }
-        
-        Text(
-            text = if (isEditing) "Edit Password" else "Add Password",
-            style = MaterialTheme.typography.headlineSmall
-        )
-        
-        Button(
-            onClick = onSave,
-            enabled = isFormValid && !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text(if (isEditing) "Update" else "Save")
-            }
-        }
-    }
-}
-
-@Composable
-private fun PasswordForm(
-    title: String,
-    username: String,
-    password: String,
-    website: String,
-    notes: String,
-    isPasswordVisible: Boolean,
-    onTitleChange: (String) -> Unit,
-    onUsernameChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onWebsiteChange: (String) -> Unit,
-    onNotesChange: (String) -> Unit,
-    onPasswordVisibilityToggle: () -> Unit,
-    onGeneratePassword: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Title field
-        OutlinedTextField(
-            value = title,
-            onValueChange = onTitleChange,
-            label = { Text("Title *") },
-            placeholder = { Text("e.g., Gmail, Facebook") },
-            leadingIcon = { Icon(Icons.Default.Label, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        
-        // Username field
-        OutlinedTextField(
-            value = username,
-            onValueChange = onUsernameChange,
-            label = { Text("Username/Email *") },
-            placeholder = { Text("e.g., john@example.com") },
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        
-        // Password field
-        OutlinedTextField(
-            value = password,
-            onValueChange = onPasswordChange,
-            label = { Text("Password *") },
-            placeholder = { Text("Enter a strong password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-            visualTransformation = if (isPasswordVisible) 
-                VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                Row {
-                    IconButton(onClick = onPasswordVisibilityToggle) {
-                        Icon(
-                            if (isPasswordVisible) Icons.Default.VisibilityOff 
-                            else Icons.Default.Visibility,
-                            contentDescription = if (isPasswordVisible) 
-                                "Hide password" else "Show password"
-                        )
-                    }
-                    IconButton(onClick = onGeneratePassword) {
-                        Icon(
-                            Icons.Default.Refresh, 
-                            contentDescription = "Generate password"
-                        )
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        
-        // Website field
-        OutlinedTextField(
-            value = website,
-            onValueChange = onWebsiteChange,
-            label = { Text("Website") },
-            placeholder = { Text("e.g., https://example.com") },
-            leadingIcon = { Icon(Icons.Default.Language, contentDescription = null) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        
-        // Notes field
-        OutlinedTextField(
-            value = notes,
-            onValueChange = onNotesChange,
-            label = { Text("Notes") },
-            placeholder = { Text("Additional information (optional)") },
-            leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 5
-        )
-    }
-}
-
-@Composable
-private fun GeneratePasswordDialog(
-    viewModel: PasswordViewModel,
-    onDismiss: () -> Unit,
-    onPasswordGenerated: (String) -> Unit
-) {
-    var length by remember { mutableIntStateOf(16) }
-    var includeUppercase by remember { mutableStateOf(true) }
-    var includeLowercase by remember { mutableStateOf(true) }
-    var includeNumbers by remember { mutableStateOf(true) }
-    var includeSymbols by remember { mutableStateOf(true) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Generate Password") },
-        text = {
-            Column {
-                Text("Password Length: $length")
-                Slider(
-                    value = length.toFloat(),
-                    onValueChange = { length = it.toInt() },
-                    valueRange = 8f..32f,
-                    steps = 23
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = includeUppercase,
-                        onCheckedChange = { includeUppercase = it }
-                    )
-                    Text("Include Uppercase (A-Z)")
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = includeLowercase,
-                        onCheckedChange = { includeLowercase = it }
-                    )
-                    Text("Include Lowercase (a-z)")
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = includeNumbers,
-                        onCheckedChange = { includeNumbers = it }
-                    )
-                    Text("Include Numbers (0-9)")
-                }
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = includeSymbols,
-                        onCheckedChange = { includeSymbols = it }
-                    )
-                    Text("Include Symbols (!@#$%)")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val generatedPassword = viewModel.generatePassword(
-                        length, includeUppercase, includeLowercase, 
-                        includeNumbers, includeSymbols
-                    )
-                    onPasswordGenerated(generatedPassword)
-                }
-            ) {
-                Text("Generate")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+    AddEditPasswordContent(
+        title = title,
+        username = username,
+        password = password,
+        isPasswordVisible = isPasswordVisible,
+        isEditing = isEditing,
+        onTitleChange = { title = it },
+        onUsernameChange = { username = it },
+        onPasswordChange = { password = it },
+        onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
+        onGoBack = onNavigateBack,
+        onDeleteClick = { showDeleteDialog = true },
+        onSaveClick = {
+            viewModel.addPassword(title, username, password, "", "") { result ->
+                if (result.isSuccess) onNavigateBack()
             }
         }
     )
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirm Delete") },
+            text = { Text("Are you sure you want to delete this password?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    passwordEntry?.let { entry ->
+                        viewModel.deletePassword(entry) { onNavigateBack() }
+                    }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AddEditPasswordContent(
+    title: String,
+    username: String,
+    password: String,
+    isPasswordVisible: Boolean,
+    isEditing: Boolean,
+    onTitleChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onTogglePasswordVisibility: () -> Unit,
+    onGoBack: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onSaveClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .wrapContentSize()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "PASSWORD FOR",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    // Plain text input for title (no Surface/box)
+                    BasicTextField(
+                        value = title,
+                        onValueChange = onTitleChange,
+                        textStyle = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.padding(top = 8.dp),
+                        decorationBox = { innerTextField ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box {
+                                    if (title.isEmpty()) Text("site_name", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                    innerTextField()
+                                }
+                            }
+                        }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title.take(1).uppercase().ifEmpty { "?" },
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            FormSection(
+                label = "Login info",
+                value = username,
+                subLabel = "Email, tel ...",
+                icon = Icons.Default.Edit,
+                onValueChange = onUsernameChange
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            FormSection(
+                label = "Password",
+                value = if (isPasswordVisible) password else "••••••••",
+                subLabel = "Tap to reveal",
+                icon = Icons.Default.Edit,
+                onValueChange = onPasswordChange,
+                innerIcon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                onInnerIconClick = onTogglePasswordVisibility
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Groups section
+            Text(
+                text = "Groups",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(15.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = borderStroke(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "None", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "View group", tint = MaterialTheme.colorScheme.primary)
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), CircleShape)
+                ) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete from group", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Bottom actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Go back
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    FilledTonalIconButton(
+                        onClick = onGoBack,
+                        modifier = Modifier.size(56.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = Color(0xFFFFE599).copy(alpha = 0.8f) // Keeping the yellow but subtle
+                        )
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
+                    }
+                }
+
+                if (isEditing) {
+                    Button(
+                        onClick = onDeleteClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier
+                            .height(64.dp)
+                            .fillMaxWidth(0.8f)
+                            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Delete password",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onSaveClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .height(64.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                    ) {
+                        Text("Save New Password", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormSection(
+    label: String,
+    value: String,
+    subLabel: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onIconClick: () -> Unit = {},
+    onValueChange: (String) -> Unit,
+    innerIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onInnerIconClick: () -> Unit = {}
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = RoundedCornerShape(15.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = borderStroke(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        BasicTextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (innerIcon != null) {
+                        IconButton(onClick = onInnerIconClick) {
+                            Icon(innerIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            IconButton(
+                onClick = onIconClick,
+                modifier = Modifier
+                    .size(48.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun borderStroke() = BorderStroke(
+    width = 1.dp,
+    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+)
+
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
+@Composable
+fun AddEditPasswordScreenPreview() {
+    PasswordManagerTheme {
+        AddEditPasswordContent(
+            title = "google.com",
+            username = "user@gmail.com",
+            password = "password123",
+            isPasswordVisible = false,
+            isEditing = true,
+            onTitleChange = {},
+            onUsernameChange = {},
+            onPasswordChange = {},
+            onTogglePasswordVisibility = {},
+            onGoBack = {},
+            onDeleteClick = {},
+            onSaveClick = {}
+        )
+    }
 }
