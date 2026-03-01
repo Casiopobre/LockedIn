@@ -2,7 +2,7 @@
 
 **LockedIn** is an offline-first password manager developed during HackUDC 2026 (only 36h) that makes advanced encryption accessible through a seamless and intuitive user experience. It automates complex asymmetric cryptography for secure group sharing, keeping your data **protected** without any technical friction.
 
-![demo](media/mini-demo2.gif)
+![demo](media/mini-demo3.gif)
 
 ---
 
@@ -10,7 +10,7 @@
 
 - **Offline Password Vault**: store passwords locally with AES-256-GCM encryption and a device-side master key.
 - **Auto Complete and Auto Store**: prompts an option to complete or store a password depending on the case.
-- **End-to-End Encrypted Sharing**: share passwords between users using asymmetric cryptography (ECC/ECIES) and a Symmetric Group Key (SGK).
+- **End-to-End Encrypted Sharing**: share passwords between users using asymmetric cryptography (RSA) and a Symmetric Group Key (SGK).
 - **Zero-Knowledge Backend**: the server stores only hashed identifiers and encrypted blobs; it never has access to plaintext secrets.
 - **Group Management**: create groups, invite members by phone number, and share credentials securely.
 - **Password Generator**: generate strong, customizable passwords on-device.
@@ -36,7 +36,7 @@
 2. The app generates an EC (Elliptic Curve P-256) key pair and a random remote password.
 3. The private key and master key are stored in secure on-device storage (`EncryptedSharedPreferences`).
 4. The remote password is hashed with **SHA-256** on the client and sent to the server along with the phone number and public key.
-5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with Argon2id** (+ salt + separate pepper) for storage.
+5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with **Argon2id** (+ salt + separate pepper) for storage.
 
 ### Password Sharing (SGK Flow)
 
