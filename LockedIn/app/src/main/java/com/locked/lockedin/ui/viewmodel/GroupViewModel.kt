@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.locked.lockedin.network.model.GroupListItem
-import com.locked.lockedin.network.model.PasswordResponse
 import com.locked.lockedin.repository.ApiException
 import com.locked.lockedin.repository.VaultRepository
 import com.locked.lockedin.security.SgkManager

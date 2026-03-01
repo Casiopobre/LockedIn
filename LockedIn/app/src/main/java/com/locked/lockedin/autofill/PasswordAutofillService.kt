@@ -1,6 +1,7 @@
 package com.locked.lockedin.autofill
 
 import android.app.PendingIntent
+import android.app.assist.AssistStructure
 import android.content.Intent
 import android.os.CancellationSignal
 import android.service.autofill.*
@@ -9,19 +10,30 @@ import android.widget.RemoteViews
 import com.locked.lockedin.R
 import com.locked.lockedin.data.database.PasswordDatabase
 import com.locked.lockedin.data.model.PasswordEntry
+import com.locked.lockedin.repository.PasswordRepository
 import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.VaultKeyHolder
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class PasswordAutofillService : AutofillService() {
 
+    private lateinit var repository: PasswordRepository
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     companion object {
         const val EXTRA_FILL_RESPONSE = "extra_fill_response"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        val db = PasswordDatabase.getDatabase(this)
+        repository = PasswordRepository(db.passwordDao(), CryptoManager())
     }
 
     override fun onFillRequest(
@@ -74,20 +86,15 @@ class PasswordAutofillService : AutofillService() {
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        // Cuando el usuario guarda una nueva contraseña detectada por el sistema
-        val structure = request.fillContexts.lastOrNull()?.structure ?: run {
-            callback.onSuccess()
-            return
-        }
-
+        val structure = request.fillContexts.lastOrNull()?.structure ?: return callback.onFailure("No structure")
         val parsed = AutofillHelper.parseStructure(structure)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 saveNewEntry(parsed, structure)
                 callback.onSuccess()
             } catch (e: Exception) {
-                callback.onFailure("Error al guardar: ${e.message}")
+                callback.onFailure(e.message)
             }
         }
     }
@@ -103,12 +110,9 @@ class PasswordAutofillService : AutofillService() {
         if (!VaultKeyHolder.isUnlocked) return emptyList()
 
         val db = PasswordDatabase.getDatabase(applicationContext)
-        // ✅ Recoge el Flow a una List antes de filtrar
         val allEntries = db.passwordDao().getAllPasswords().first()
-        // Si getAllPasswords() ya devuelve List directamente, simplifica a:
-        // val allEntries = db.passwordDao().getAllPasswords()
 
-        return allEntries.filter { entry ->          // ✅ Ahora filter es sobre List<PasswordEntry>
+        return allEntries.filter { entry ->
             val websiteLower = entry.website.lowercase()
             val titleLower = entry.title.lowercase()
 
@@ -157,6 +161,7 @@ class PasswordAutofillService : AutofillService() {
 
         return datasetBuilder.build()
     }
+
     private fun buildLockedResponse(parsed: ParsedFields): FillResponse? {
         // Construimos un FillResponse "vacío" que al seleccionarlo abre la auth
         val allIds = (parsed.usernameNodes + parsed.passwordNodes)
@@ -227,12 +232,29 @@ class PasswordAutofillService : AutofillService() {
         }
     }
 
-    private suspend fun saveNewEntry(
-        parsed: ParsedFields,
-        structure: android.app.assist.AssistStructure
-    ) {
-        // Extrae los valores introducidos por el usuario
-        // para guardarlos como nueva entrada
-        // Implementa según tu PasswordRepository
+    private suspend fun saveNewEntry(parsed: ParsedFields, structure: AssistStructure) {
+        // Si el vault está bloqueado, mejor no intentar guardar (o pedir desbloqueo)
+        if (!VaultKeyHolder.isUnlocked) return
+
+        val usernameId = parsed.usernameNodes.firstOrNull()?.autofillId
+        val passwordId = parsed.passwordNodes.firstOrNull()?.autofillId
+
+        val username = usernameId?.let { AutofillHelper.getValueFromNode(structure, it) } ?: ""
+        val password = passwordId?.let { AutofillHelper.getValueFromNode(structure, it) } ?: ""
+
+        if (password.isNotBlank()) {
+            val title = parsed.packageName?.substringAfterLast('.') ?: "Nueva entrada"
+            repository.insertPassword(
+                title = title.replaceFirstChar { it.uppercase() },
+                username = username,
+                password = password,
+                website = parsed.webDomain ?: parsed.packageName ?: ""
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 }

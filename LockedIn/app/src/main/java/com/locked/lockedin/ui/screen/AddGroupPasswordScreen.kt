@@ -44,7 +44,7 @@ fun AddGroupPasswordScreen(
     var password         by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var showGeneratorOptions by remember { mutableStateOf(false) }
-    var genLength        by remember { mutableStateOf(16f) }
+    var genLength        by remember { mutableFloatStateOf(16f) }
     var genUppercase     by remember { mutableStateOf(true) }
     var genLowercase     by remember { mutableStateOf(true) }
     var genNumbers       by remember { mutableStateOf(true) }
