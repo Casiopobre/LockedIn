@@ -36,7 +36,7 @@
 2. The app generates an RSA key pair and a random remote password.
 3. The private key and master key are stored in secure on-device storage (`EncryptedSharedPreferences`).
 4. The remote password is hashed with **SHA-256** on the client and sent to the server along with the phone number and public key.
-5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with Argon2id** (+ salt + separate pepper) for storage.
+5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with **Argon2id** (+ salt + separate pepper) for storage.
 
 ### Password Sharing (SGK Flow)
 
