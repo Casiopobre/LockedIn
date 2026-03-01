@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,11 +28,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -41,10 +46,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -86,6 +95,9 @@ fun MainScreen(
         onSearchClearClick  = viewModel::clearSearch,
         onAddPasswordClick  = onAddPasswordClick,
         onPasswordClick     = onPasswordClick,
+        onDeletePasswords   = { entries ->
+            entries.forEach { entry -> viewModel.deletePassword(entry) }
+        },
         onCopyPassword      = { entry ->
             val plain = viewModel.decryptPassword(entry.encryptedPassword)
             if (plain != null) copyToClipboard(context, "Password", plain)
@@ -120,70 +132,124 @@ fun MainScreenContent(
     onSearchClearClick: () -> Unit,
     onAddPasswordClick: () -> Unit,
     onPasswordClick: (PasswordEntry) -> Unit,
+    onDeletePasswords: (List<PasswordEntry>) -> Unit,
     onCopyPassword: (PasswordEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // ── Selection state ──────────────────────────────────────────────────────
+    var selectionMode     by remember { mutableStateOf(false) }
+    var selectedIds       by remember { mutableStateOf(emptySet<Long>()) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    fun exitSelectionMode() {
+        selectionMode = false
+        selectedIds   = emptySet()
+    }
+
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color    = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            // 1. Header: MY PASSWORDS
-            Text(
-                text = "MY PASSWORDS",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+            // 1. Header: MY PASSWORDS / X selected
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text     = if (selectionMode) "${selectedIds.size} selected" else "MY PASSWORDS",
+                    style    = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.onBackground
+                    ),
+                    modifier = Modifier.weight(1f)
                 )
-            )
+                // X button to cancel selection mode
+                AnimatedVisibility(visible = selectionMode) {
+                    IconButton(onClick = { exitSelectionMode() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel selection")
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 2. Action Buttons: Add and Del
+            // 2. Action Buttons: Add and Delete
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Add password button
-                Button(
-                    onClick = onAddPasswordClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFC1E1C1).copy(alpha = 0.9f),
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
-                    contentPadding = PaddingValues(horizontal = 8.dp)
+                // Add password button — hidden while in selection mode
+                AnimatedVisibility(
+                    visible  = !selectionMode,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.AddCircleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Add password", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Button(
+                        onClick = onAddPasswordClick,
+                        colors  = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFC1E1C1).copy(alpha = 0.9f),
+                            contentColor   = Color.Black
+                        ),
+                        shape   = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(Icons.Default.AddCircleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add password", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
 
-                // Del passwords button
+                // Delete button — enters selection mode, then confirms deletion
                 Button(
-                    onClick = { /* TODO: Implement delete logic */ },
+                    onClick = {
+                        if (!selectionMode) {
+                            selectionMode = true
+                        } else {
+                            if (selectedIds.isNotEmpty()) showDeleteConfirm = true
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF4C2C2).copy(alpha = 0.9f),
-                        contentColor = Color.Black
+                        containerColor = if (selectionMode && selectedIds.isNotEmpty())
+                            Color(0xFFD32F2F).copy(alpha = 0.85f)
+                        else
+                            Color(0xFFF4C2C2).copy(alpha = 0.9f),
+                        contentColor = if (selectionMode && selectedIds.isNotEmpty())
+                            Color.White
+                        else
+                            Color.Black
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape    = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
                         .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector        = if (selectionMode && selectedIds.isNotEmpty())
+                            Icons.Default.DeleteForever
+                        else
+                            Icons.Default.RemoveCircleOutline,
+                        contentDescription = null,
+                        modifier           = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text("Delete passwords", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        text       = if (selectionMode && selectedIds.isNotEmpty())
+                            "Delete (${selectedIds.size})"
+                        else
+                            "Delete passwords",
+                        fontWeight = FontWeight.Bold,
+                        fontSize   = 14.sp
+                    )
                 }
             }
 
@@ -191,27 +257,27 @@ fun MainScreenContent(
 
             // 3. Search and Filter
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier          = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    shape    = RoundedCornerShape(8.dp),
+                    color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                     modifier = Modifier.weight(1f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        modifier          = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(10.dp))
                         BasicTextField(
-                            value = searchQuery,
+                            value         = searchQuery,
                             onValueChange = onSearchQueryChange,
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                            modifier = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            textStyle     = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                            modifier      = Modifier.fillMaxWidth(),
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) Text("Search", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                 innerTextField()
@@ -225,7 +291,7 @@ fun MainScreenContent(
                 // Filter button
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { /* TODO: Implement filter logic */ }
+                    modifier          = Modifier.clickable { /* TODO: Implement filter logic */ }
                 ) {
                     Icon(Icons.Default.FilterList, contentDescription = "Filtrar", tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(4.dp))
@@ -237,19 +303,31 @@ fun MainScreenContent(
 
             // 4. List Header
             Row(
-                modifier = Modifier
+                modifier          = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp))
-                )
+                // "Select all" checkbox in selection mode, decorative box otherwise
+                if (selectionMode) {
+                    Checkbox(
+                        checked         = selectedIds.size == passwords.size && passwords.isNotEmpty(),
+                        onCheckedChange = { checked ->
+                            selectedIds = if (checked) passwords.map { it.id }.toSet()
+                            else emptySet()
+                        },
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp))
+                    )
+                }
                 Spacer(Modifier.width(24.dp))
                 Text("Site name", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                Text("Owner", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.wrapContentSize())
+                Text("Owner",     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.wrapContentSize())
                 Spacer(Modifier.width(12.dp))
             }
 
@@ -259,24 +337,57 @@ fun MainScreenContent(
 
             // 5. Content based on state
             when {
-                uiState.isLoading -> {
-                    LoadingContent()
-                }
-                passwords.isEmpty() -> {
-                    EmptyContent(
-                        hasSearchQuery = searchQuery.isNotBlank(),
-                        searchQuery    = searchQuery
-                    )
-                }
-                else -> {
-                    PasswordList(
-                        passwords       = passwords,
-                        onPasswordClick = onPasswordClick,
-                        onCopyClick     = onCopyPassword
-                    )
-                }
+                uiState.isLoading   -> LoadingContent()
+                passwords.isEmpty() -> EmptyContent(
+                    hasSearchQuery = searchQuery.isNotBlank(),
+                    searchQuery    = searchQuery
+                )
+                else -> PasswordList(
+                    passwords       = passwords,
+                    selectionMode   = selectionMode,
+                    selectedIds     = selectedIds,
+                    onPasswordClick = { entry ->
+                        if (selectionMode) {
+                            // Toggle selection on tap
+                            selectedIds = if (selectedIds.contains(entry.id))
+                                selectedIds - entry.id
+                            else
+                                selectedIds + entry.id
+                        } else {
+                            onPasswordClick(entry)
+                        }
+                    },
+                    onCheckChange   = { entry, checked ->
+                        selectedIds = if (checked) selectedIds + entry.id
+                        else selectedIds - entry.id
+                    },
+                    onCopyClick     = { entry -> onCopyPassword(entry) }
+                )
             }
         }
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteConfirm) {
+        val count = selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title            = { Text("Delete $count password${if (count > 1) "s" else ""}?") },
+            text             = { Text("This action cannot be undone.") },
+            confirmButton    = {
+                TextButton(onClick = {
+                    val toDelete = passwords.filter { it.id in selectedIds }
+                    onDeletePasswords(toDelete)
+                    showDeleteConfirm = false
+                    exitSelectionMode()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton    = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
@@ -285,7 +396,7 @@ fun MainScreenContent(
 @Composable
 private fun LoadingContent() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier         = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -304,7 +415,7 @@ private fun EmptyContent(hasSearchQuery: Boolean, searchQuery: String) {
             modifier            = Modifier.padding(32.dp)
         ) {
             Text(
-                text = if (hasSearchQuery) "No results found" else "No passwords saved",
+                text  = if (hasSearchQuery) "No results found" else "No passwords saved",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -315,25 +426,29 @@ private fun EmptyContent(hasSearchQuery: Boolean, searchQuery: String) {
 @Composable
 private fun PasswordList(
     passwords: List<PasswordEntry>,
+    selectionMode: Boolean,
+    selectedIds: Set<Long>,
     onPasswordClick: (PasswordEntry) -> Unit,
+    onCheckChange: (PasswordEntry, Boolean) -> Unit,
     onCopyClick: (PasswordEntry) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        contentPadding      = PaddingValues(bottom = 24.dp)
     ) {
-        items(
-            items = passwords,
-            key = { password -> password.id }
-        ) { password ->
+        items(items = passwords, key = { it.id }) { password ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier          = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp))
+                // Checkbox — interactive only in selection mode
+                Checkbox(
+                    checked         = selectedIds.contains(password.id),
+                    onCheckedChange = { checked ->
+                        if (selectionMode) onCheckChange(password, checked)
+                    },
+                    enabled  = selectionMode,
+                    modifier = Modifier.size(18.dp)
                 )
 
                 Spacer(Modifier.width(12.dp))
