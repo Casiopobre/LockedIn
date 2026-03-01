@@ -40,10 +40,10 @@
 
 ### Password Sharing (SGK Flow)
 
-1. **Create a group** — The creator generates a random AES-256 **Symmetric Group Key (SGK)**, encrypts it with their own public key, and uploads it.
-2. **Invite a member** — The creator fetches the invitee's public key from the server, encrypts the SGK with it, and uploads the encrypted copy.
-3. **Join the group** — The invitee downloads the encrypted SGK and decrypts it with their private key.
-4. **Share a password** — Any member encrypts the password with the SGK (AES-256-GCM) and uploads the ciphertext. Other members decrypt it locally with the same SGK.
+1. **Create a group**: the creator generates a random AES-256 **Symmetric Group Key (SGK)**, encrypts it with their own public key, and uploads it.
+2. **Invite a member**: the creator fetches the invitee's public key from the server, encrypts the SGK with it, and uploads the encrypted copy.
+3. **Join the group**: the invitee downloads the encrypted SGK and decrypts it with their private key.
+4. **Share a password**: any member encrypts the password with the SGK (AES-256-GCM) and uploads the ciphertext. Other members decrypt it locally with the same SGK.
 
 For more details, see the [encryption documentation](media/cifrado.md) and the sequence diagrams ([registration](media/registro.png), [SGK flow](media/sgk.png)).
 
@@ -104,12 +104,12 @@ cd LockedIn
 
 ## How to Use
 
-1. **Register** — Open the app, enter your phone number and choose a master key.
-2. **Add passwords** — Tap the **+** button to create entries (title, username, password, optional URL/notes). You also can use the autofill popup in password fields. Your data is encrypted and stored locally.
-3. **Create a group** — Go to the groups section and create a new group to start sharing passwords.
-4. **Invite members** — Add other registered users to your group by their phone number.
-5. **Share a password** — Add a password entry to the group. It will be end-to-end encrypted with the group's SGK so all members can decrypt it.
-> **Note:** The phone number is currently hardcoded in the app.
+1. **Register**: open the app, enter your phone number and choose a master key.
+2. **Add passwords**: tap the **+** button to create entries (title, username, password, optional URL/notes). You also can use the autofill popup in password fields. Your data is encrypted and stored locally.
+3. **Create a group**: go to the groups section and create a new group to start sharing passwords.
+4. **Invite members**: add other registered users to your group by their phone number.
+5. **Share a password**: add a password entry to the group. It will be end-to-end encrypted with the group's SGK so all members can decrypt it.
+> **Note:**: the phone number is currently hardcoded in the app.
 
 ---
 
