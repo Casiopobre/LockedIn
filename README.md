@@ -109,7 +109,7 @@ cd LockedIn
 3. **Create a group**: go to the groups section and create a new group to start sharing passwords.
 4. **Invite members**: add other registered users to your group by their phone number.
 5. **Share a password**: add a password entry to the group. It will be end-to-end encrypted with the group's SGK so all members can decrypt it.
-> **Note:**: the phone number is currently hardcoded in the app.
+> **Note:** the phone number is currently hardcoded in the app.
 
 ---
 
