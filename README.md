@@ -28,7 +28,7 @@
 ## How Does It Work?
 
 > [!WARNING]
-> Its an MVP proyect with unfinished features
+> Its an MVP project with unfinished features.
 
 ### Registration
 
