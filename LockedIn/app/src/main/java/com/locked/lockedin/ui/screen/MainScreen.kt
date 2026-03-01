@@ -1,5 +1,9 @@
 package com.locked.lockedin.ui.screen
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -71,15 +76,21 @@ fun MainScreen(
     val passwords   by viewModel.passwords.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val uiState     by viewModel.uiState.collectAsState()
+    val context     = LocalContext.current
 
     MainScreenContent(
-        passwords = passwords,
-        searchQuery = searchQuery,
-        uiState = uiState,
+        passwords           = passwords,
+        searchQuery         = searchQuery,
+        uiState             = uiState,
         onSearchQueryChange = viewModel::updateSearchQuery,
-        onSearchClearClick = viewModel::clearSearch,
-        onAddPasswordClick = onAddPasswordClick,
-        onPasswordClick = onPasswordClick,
+        onSearchClearClick  = viewModel::clearSearch,
+        onAddPasswordClick  = onAddPasswordClick,
+        onPasswordClick     = onPasswordClick,
+        onCopyPassword      = { entry ->
+            val plain = viewModel.decryptPassword(entry.encryptedPassword)
+            if (plain != null) copyToClipboard(context, "Password", plain)
+            else Toast.makeText(context, "Could not decrypt password", Toast.LENGTH_SHORT).show()
+        },
         modifier = modifier
     )
 
@@ -109,6 +120,7 @@ fun MainScreenContent(
     onSearchClearClick: () -> Unit,
     onAddPasswordClick: () -> Unit,
     onPasswordClick: (PasswordEntry) -> Unit,
+    onCopyPassword: (PasswordEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -136,7 +148,7 @@ fun MainScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Add password button (Refined style)
+                // Add password button
                 Button(
                     onClick = onAddPasswordClick,
                     colors = ButtonDefaults.buttonColors(
@@ -155,7 +167,7 @@ fun MainScreenContent(
                     Text("Add password", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
 
-                // Del passwords button (Refined style)
+                // Del passwords button
                 Button(
                     onClick = { /* TODO: Implement delete logic */ },
                     colors = ButtonDefaults.buttonColors(
@@ -182,7 +194,6 @@ fun MainScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Search box (Refined style like AddEditPasswordScreen fields)
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -208,9 +219,9 @@ fun MainScreenContent(
                         )
                     }
                 }
-                
+
                 Spacer(Modifier.width(16.dp))
-                
+
                 // Filter button
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -226,10 +237,11 @@ fun MainScreenContent(
 
             // 4. List Header
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header Checkbox placeholder (Matches layout in image)
                 Box(
                     modifier = Modifier
                         .size(18.dp)
@@ -259,7 +271,8 @@ fun MainScreenContent(
                 else -> {
                     PasswordList(
                         passwords       = passwords,
-                        onPasswordClick = onPasswordClick
+                        onPasswordClick = onPasswordClick,
+                        onCopyClick     = onCopyPassword
                     )
                 }
             }
@@ -302,7 +315,8 @@ private fun EmptyContent(hasSearchQuery: Boolean, searchQuery: String) {
 @Composable
 private fun PasswordList(
     passwords: List<PasswordEntry>,
-    onPasswordClick: (PasswordEntry) -> Unit
+    onPasswordClick: (PasswordEntry) -> Unit,
+    onCopyClick: (PasswordEntry) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -316,19 +330,19 @@ private fun PasswordList(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Checkbox from sketch (Maintains layout while keeping modern style)
                 Box(
                     modifier = Modifier
                         .size(18.dp)
                         .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(3.dp))
                 )
-                
+
                 Spacer(Modifier.width(12.dp))
-                
+
                 PasswordItem(
-                    password = password,
-                    onClick = { onPasswordClick(password) },
-                    modifier = Modifier.weight(1f)
+                    password    = password,
+                    onClick     = { onPasswordClick(password) },
+                    onCopyClick = { onCopyClick(password) },
+                    modifier    = Modifier.weight(1f)
                 )
             }
         }
@@ -357,4 +371,12 @@ private fun SearchBar(
         },
         modifier = modifier
     )
+}
+
+// Clipboard helper
+
+private fun copyToClipboard(context: Context, label: String, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+    Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
 }
