@@ -2,7 +2,7 @@
 
 **LockedIn** is an offline-first password manager developed during HackUDC 2026 that makes advanced encryption accessible through a seamless and intuitive user experience. It automates complex asymmetric cryptography for secure group sharing, keeping your data **protected** without any technical friction.
 
-> Built at **HackUDC 2026** in only 36h.
+![demo](media/mini-demo2.gif)
 
 ---
 
