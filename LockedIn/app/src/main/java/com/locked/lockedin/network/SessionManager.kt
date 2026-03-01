@@ -33,8 +33,8 @@ class SessionManager(context: Context) {
     /** Retrieve the JWT access token, or null if not logged in. */
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
-    /** Returns the token formatted for the Authorization header, or null. */
-    fun bearerToken(): String? = getToken()?.takeIf { it.isNotBlank() }?.let { "Bearer $it" }
+    /** Returns the token formatted for the Authorization header. */
+    fun bearerToken(): String? = getToken()?.let { "Bearer $it" }
 
     // ── User ID ─────────────────────────────────────────────────────────────
 
@@ -46,26 +46,11 @@ class SessionManager(context: Context) {
     /** Retrieve the stored user_id. */
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
-    // ── Password hash (cached for deferred auth) ────────────────────────────
-
-    /** Save the SHA-256 hash of the master password for deferred auth. */
-    fun savePasswordHash(hash: String) {
-        prefs.edit().putString(KEY_PASSWORD_HASH, hash).apply()
-    }
-
-    /** Retrieve the cached password hash, or null. */
-    fun getPasswordHash(): String? = prefs.getString(KEY_PASSWORD_HASH, null)
-
     // ── Session control ─────────────────────────────────────────────────────
 
-    /** Returns true if a valid session exists (non-null, non-blank token). */
+    /** Returns true if a valid session exists. */
     val isLoggedIn: Boolean
-        get() = !getToken().isNullOrBlank()
-
-    /** Clear only the JWT token (keeps userId and passwordHash). */
-    fun clearToken() {
-        prefs.edit().remove(KEY_TOKEN).apply()
-    }
+        get() = getToken() != null
 
     /** Clear all session data (logout). */
     fun clear() {
@@ -73,8 +58,7 @@ class SessionManager(context: Context) {
     }
 
     companion object {
-        private const val KEY_TOKEN         = "jwt_token"
-        private const val KEY_USER_ID       = "user_id"
-        private const val KEY_PASSWORD_HASH = "password_hash"
+        private const val KEY_TOKEN   = "jwt_token"
+        private const val KEY_USER_ID = "user_id"
     }
 }

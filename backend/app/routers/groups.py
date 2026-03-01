@@ -76,29 +76,6 @@ async def create_group(
 
     return group
 
-# Delete a group
-@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_group(
-    group_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Delete a group. 
-    Constraint: only the owner (the user who created the group) can delete it.
-    """
-    group = await _get_group_or_404(group_id, db)
-
-    # Check ownership
-    if group.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Only the group owner can delete this group"
-        )
-
-    await db.delete(group)
-    await db.commit()
-
 
 # List my groups
 @router.get("/", response_model=list[GroupListItem])

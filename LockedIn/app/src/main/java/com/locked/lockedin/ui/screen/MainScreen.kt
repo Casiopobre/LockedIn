@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.data.model.PasswordEntry
 import com.locked.lockedin.ui.component.PasswordItem
-import com.locked.lockedin.ui.theme.LockedInTheme
+import com.locked.lockedin.ui.theme.PasswordManagerTheme
 import com.locked.lockedin.ui.viewmodel.PasswordUiState
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 
@@ -332,6 +332,26 @@ private fun PasswordList(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
+@Composable
+fun MainScreenPreview() {
+    PasswordManagerTheme {
+        MainScreenContent(
+            passwords = listOf(
+                PasswordEntry(id = 1, title = "Google", username = "you", website = "google.com", encryptedPassword = ""),
+                PasswordEntry(id = 2, title = "GitHub", username = "you", website = "github.com", encryptedPassword = ""),
+                PasswordEntry(id = 3, title = "Netflix", username = "you", website = "netflix.com", encryptedPassword = "")
+            ),
+            searchQuery = "",
+            uiState = PasswordUiState(),
+            onSearchQueryChange = {},
+            onSearchClearClick = {},
+            onAddPasswordClick = {},
+            onPasswordClick = {}
+        )
     }
 }
 

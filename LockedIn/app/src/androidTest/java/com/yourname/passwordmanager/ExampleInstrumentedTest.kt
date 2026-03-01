@@ -1,4 +1,4 @@
-package com.locked.lockedin
+package com.abhinav.passwordmanager
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

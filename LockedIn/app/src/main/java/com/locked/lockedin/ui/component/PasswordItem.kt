@@ -23,11 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.R
 import com.locked.lockedin.data.model.PasswordEntry
-import com.locked.lockedin.ui.theme.LockedInTheme
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.locks.Lock
+import com.locked.lockedin.ui.theme.PasswordManagerTheme
 
 /**
  * Composable for displaying a password entry item in the list.
@@ -171,7 +167,7 @@ private fun PwnedBadge(count: Int, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun PasswordItemPreview() {
-    LockedInTheme() {
+    PasswordManagerTheme {
         Column(
             modifier = Modifier
                 .padding(16.dp)

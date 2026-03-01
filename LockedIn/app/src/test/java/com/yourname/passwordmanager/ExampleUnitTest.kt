@@ -1,4 +1,4 @@
-package com.locked.lockedin
+package com.abhinav.passwordmanager
 
 import org.junit.Test
 

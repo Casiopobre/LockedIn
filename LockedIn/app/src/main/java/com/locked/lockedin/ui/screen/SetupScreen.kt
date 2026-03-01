@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.locked.lockedin.security.BiometricHelper
 import com.locked.lockedin.security.BiometricKeyManager
+import com.yourname.passwordmanager.ui.viewmodel.SetupViewModel
 import com.locked.lockedin.R
-import com.locked.lockedin.ui.viewmodel.SetupViewModel
 
 /**
  * First-launch screen where the user creates their master key.

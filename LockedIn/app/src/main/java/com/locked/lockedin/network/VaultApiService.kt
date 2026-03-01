@@ -85,10 +85,4 @@ interface VaultApiService {
         @Path("password_id") passwordId: String,
         @Header("Authorization") bearerToken: String
     ): Response<Unit>
-
-    @DELETE("groups/{group_id}")
-    suspend fun deleteGroup(
-        @Path("group_id") groupId: String,
-        @Header("Authorization") bearerToken: String
-    ): Response<Unit>
 }

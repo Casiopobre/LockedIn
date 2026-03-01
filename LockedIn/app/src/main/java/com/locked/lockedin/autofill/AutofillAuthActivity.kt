@@ -13,9 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.locked.lockedin.security.MasterKeyManager
-import com.locked.lockedin.security.VaultKeyHolder
-import com.locked.lockedin.ui.theme.LockedInTheme
+import com.locked.lockedin.ui.theme.PasswordManagerTheme
 
 class AutofillAuthActivity : ComponentActivity() {
 
@@ -28,7 +26,7 @@ class AutofillAuthActivity : ComponentActivity() {
         )
 
         setContent {
-            LockedInTheme {
+            PasswordManagerTheme {
                 AuthScreen(
                     onAuthenticated = {
                         // El vault ya está desbloqueado, devolvemos el FillResponse
@@ -38,28 +36,15 @@ class AutofillAuthActivity : ComponentActivity() {
                                 pendingResponse
                             )
                         }
-                        setResult(RESULT_OK, replyIntent)
+                        setResult(Activity.RESULT_OK, replyIntent)
                         finish()
                     },
                     onCancel = {
                         setResult(Activity.RESULT_CANCELED)
                         finish()
-                    },
-                    // Pasamos a función de desbloqueo aquí
-                    onTryUnlock = { pin -> tryUnlock(pin) }
+                    }
                 )
             }
-        }
-    }
-
-    private fun tryUnlock(pin: String): Boolean {
-        val masterKeyManager = MasterKeyManager(this)
-        return if (masterKeyManager.verifyMasterKey(pin)) {
-            val key = masterKeyManager.deriveEncryptionKey(pin)
-            VaultKeyHolder.setKey(key)
-            true
-        } else {
-            false
         }
     }
 }
@@ -67,8 +52,7 @@ class AutofillAuthActivity : ComponentActivity() {
 @Composable
 private fun AuthScreen(
     onAuthenticated: () -> Unit,
-    onCancel: () -> Unit,
-    onTryUnlock: (String) -> Boolean // Definimos a lambda
+    onCancel: () -> Unit
 ) {
     // Reutilizamos MasterKeyManager para verificar el PIN
     // Adapta esto según tu implementación en SetupUnlockViewModels.kt
@@ -102,8 +86,10 @@ private fun AuthScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onCancel) { Text("Cancelar") }
             Button(onClick = {
-                // Chamamos á lambda que recibimos
-                if (onTryUnlock(pin)) onAuthenticated() else error = true
+                // Verifica con tu MasterKeyManager existente
+                // Si es correcto, desbloquea VaultKeyHolder
+                val success = tryUnlock(pin)
+                if (success) onAuthenticated() else error = true
             }) { Text("Desbloquear") }
         }
     }
