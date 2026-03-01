@@ -8,20 +8,20 @@
 
 ## Features
 
-- **Offline Password Vault** — Store passwords locally with AES-256-GCM encryption and a device-side master key.
-- **Auto Complete and Auto Store** - Prompts an option to complete or store a password depending on the case.
-- **End-to-End Encrypted Sharing** — Share passwords between users using asymmetric cryptography (RSA) and a Symmetric Group Key (SGK).
-- **Zero-Knowledge Backend** — The server stores only hashed identifiers and encrypted blobs; it never has access to plaintext secrets.
-- **Group Management** — Create groups, invite members by phone number, and share credentials securely.
-- **Password Generator** — Generate strong, customizable passwords on-device.
-- **Modern Material 3 UI** — Clean Jetpack Compose interface with dark/light theme support.
-- **Docker-Ready Backend** — One-command deployment with Docker Compose (FastAPI + PostgreSQL).
+- **Offline Password Vault**: store passwords locally with AES-256-GCM encryption and a device-side master key.
+- **Auto Complete and Auto Store**: prompts an option to complete or store a password depending on the case.
+- **End-to-End Encrypted Sharing**: share passwords between users using asymmetric cryptography (RSA) and a Symmetric Group Key (SGK).
+- **Zero-Knowledge Backend**: the server stores only hashed identifiers and encrypted blobs; it never has access to plaintext secrets.
+- **Group Management**: create groups, invite members by phone number, and share credentials securely.
+- **Password Generator**: generate strong, customizable passwords on-device.
+- **Modern Material 3 UI**: clean Jetpack Compose interface with dark/light theme support.
+- **Docker-Ready Backend**: one-command deployment with Docker Compose (FastAPI + PostgreSQL).
 
 ### To Do Features
 
-- **Synchronize mobile contacts** - Make an easy way to add known people to your passwords group.
-- **2FA to verify the user** - Receive an SMS on the number that you introduce to verify that is your number.
-- **Recovery cases** - A method to backup and recover all your cloud information (local is unrecoverable for security reasons)
+- **Synchronize mobile contacts**: make an easy way to add known people to your passwords group.
+- **2FA to verify the user**: receive an SMS on the number that you introduce to verify that is your number.
+- **Recovery cases**: a method to backup and recover all your cloud information (local is unrecoverable for security reasons)
 
 ---
 
@@ -36,7 +36,7 @@
 2. The app generates an RSA key pair and a random remote password.
 3. The private key and master key are stored in secure on-device storage (`EncryptedSharedPreferences`).
 4. The remote password is hashed with **SHA-256** on the client and sent to the server along with the phone number and public key.
-5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with **Argon2id** (+ salt + separate pepper) for storage.
+5. The server hashes the phone number with **HMAC-SHA-256** (+ pepper) for O(1) lookup, and the password hash with Argon2id** (+ salt + separate pepper) for storage.
 
 ### Password Sharing (SGK Flow)
 
@@ -45,7 +45,7 @@
 3. **Join the group** — The invitee downloads the encrypted SGK and decrypts it with their private key.
 4. **Share a password** — Any member encrypts the password with the SGK (AES-256-GCM) and uploads the ciphertext. Other members decrypt it locally with the same SGK.
 
-For more details, see the [encryption documentation](cifrado.md) and the sequence diagrams ([registration](registro.uml), [SGK flow](sgk.uml)).
+For more details, see the [encryption documentation](media/cifrado.md) and the sequence diagrams ([registration](media/registro.png), [SGK flow](media/sgk.png)).
 
 ---
 
