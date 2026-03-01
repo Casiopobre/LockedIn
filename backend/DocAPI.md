@@ -9,36 +9,36 @@
 ## Índice
 
 - [Vault Backend – Documentación completa de la API](#vault-backend--documentación-completa-de-la-api)
-	- [Índice](#índice)
-	- [1. Visión general](#1-visión-general)
-		- [Conceptos clave](#conceptos-clave)
-	- [2. Modelo de seguridad](#2-modelo-de-seguridad)
-		- [Identificación del usuario](#identificación-del-usuario)
-		- [Contraseña maestra](#contraseña-maestra)
-		- [Secretos compartidos (E2E)](#secretos-compartidos-e2e)
-		- [Tokens de sesión](#tokens-de-sesión)
-	- [3. Autenticación (JWT)](#3-autenticación-jwt)
-	- [4. Endpoints](#4-endpoints)
-		- [4.1. Health check](#41-health-check)
-		- [4.2. Auth](#42-auth)
-			- [4.2.1. Register](#421-register)
-			- [4.2.2. Login](#422-login)
-			- [4.2.3. Public key lookup](#423-public-key-lookup)
-		- [4.3. Groups](#43-groups)
-			- [4.3.1. Create group](#431-create-group)
-			- [4.3.2. List my groups](#432-list-my-groups)
-			- [4.3.3. Add member](#433-add-member)
-			- [4.3.4. Get my SGK](#434-get-my-sgk)
-		- [4.4. Passwords](#44-passwords)
-			- [4.4.1. Create password](#441-create-password)
-			- [4.4.2. List passwords](#442-list-passwords)
-			- [4.4.3. Update password](#443-update-password)
-			- [4.4.4. Delete password](#444-delete-password)
-	- [5. Códigos de error comunes](#5-códigos-de-error-comunes)
-	- [6. Flujo típico de uso](#6-flujo-típico-de-uso)
-		- [Resumen del flujo](#resumen-del-flujo)
-	- [7. Configuración del servidor](#7-configuración-del-servidor)
-		- [Arranque con Docker](#arranque-con-docker)
+  - [Índice](#índice)
+  - [1. Visión general](#1-visión-general)
+    - [Conceptos clave](#conceptos-clave)
+  - [2. Modelo de seguridad](#2-modelo-de-seguridad)
+    - [Identificación del usuario](#identificación-del-usuario)
+    - [Contraseña maestra (zero-knowledge)](#contraseña-maestra-zero-knowledge)
+    - [Secretos compartidos (E2E)](#secretos-compartidos-e2e)
+    - [Tokens de sesión](#tokens-de-sesión)
+  - [3. Autenticación (JWT)](#3-autenticación-jwt)
+  - [4. Endpoints](#4-endpoints)
+    - [4.1. Health check](#41-health-check)
+    - [4.2. Auth](#42-auth)
+      - [4.2.1. Register](#421-register)
+      - [4.2.2. Login](#422-login)
+      - [4.2.3. Public key lookup](#423-public-key-lookup)
+    - [4.3. Groups](#43-groups)
+      - [4.3.1. Create group](#431-create-group)
+      - [4.3.2. List my groups](#432-list-my-groups)
+      - [4.3.3. Add member](#433-add-member)
+      - [4.3.4. Get my SGK](#434-get-my-sgk)
+    - [4.4. Passwords](#44-passwords)
+      - [4.4.1. Create password](#441-create-password)
+      - [4.4.2. List passwords](#442-list-passwords)
+      - [4.4.3. Update password](#443-update-password)
+      - [4.4.4. Delete password](#444-delete-password)
+  - [5. Códigos de error comunes](#5-códigos-de-error-comunes)
+  - [6. Flujo típico de uso](#6-flujo-típico-de-uso)
+    - [Resumen del flujo](#resumen-del-flujo)
+  - [7. Configuración del servidor](#7-configuración-del-servidor)
+    - [Arranque con Docker](#arranque-con-docker)
 
 ---
 
@@ -57,7 +57,7 @@ El servidor **nunca ve** las contraseñas en claro de los grupos ni la contrase�
 | **id_hash** | `Argon2id(user_id + PEPPER)` — verificación defence-in-depth tras el lookup. |
 | **password_hash** | `Argon2id(SHA256(password) + PEPPER2)` — hash lento de la contraseña maestra. El cliente envía el SHA-256; el servidor nunca ve la contraseña real. |
 | **SGK** | Shared Group Key — clave simétrica (ej. AES-256) generada por el cliente para cada grupo. Se cifra con la clave pública de cada miembro antes de subirse al servidor. |
-| **public_key** | Clave pública RSA/EC del usuario. Se usa para cifrar la SGK para ese usuario. |
+| **public_key** | Clave pública EC (P-256) del usuario. Se usa para cifrar la SGK para ese usuario mediante ECIES. |
 
 ---
 

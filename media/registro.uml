@@ -12,7 +12,7 @@ database "DB Usuarios" as DB
 
 U -> APP: Introduce Teléfono y Master Key
 APP -> APP: Generar Password remota aleatoria
-APP -> APP: Generar RSA KeyPair (Pub/Priv)
+APP -> APP: Generar EC KeyPair (Curva P-256, Pub/Priv)
 APP -> SS: Guardar Clave Privada, Master Key\n(SecureRandom)\n y Password remota aleatoria
 
 APP -> APP: SHA-256(Password)

@@ -5,7 +5,7 @@ import com.locked.lockedin.network.SessionManager
 import com.locked.lockedin.network.VaultApiService
 import com.locked.lockedin.network.model.*
 import com.locked.lockedin.security.PasswordHasher
-import com.locked.lockedin.security.RsaKeyManager
+import com.locked.lockedin.security.EcKeyManager
 import com.locked.lockedin.security.SgkManager
 
 /**
@@ -20,7 +20,7 @@ import com.locked.lockedin.security.SgkManager
  * ```
  * register(userId, masterPassword)
  * ```
- * → hashes the password with SHA-256, generates an RSA key pair if needed,
+ * → hashes the password with SHA-256, generates an EC key pair if needed,
  *   and POSTs to `/auth/register`.
  *
  * **Login**
@@ -31,7 +31,7 @@ import com.locked.lockedin.security.SgkManager
  *
  * **Create a group & share passwords**
  * ```
- * createGroup("My Team")           // generates SGK, encrypts it with our RSA pubkey
+ * createGroup("My Team")           // generates SGK, encrypts it with our EC pubkey (ECIES)
  * addMember(groupId, "bob")        // fetches bob's pubkey, encrypts SGK for him
  * sharePassword(groupId, "GitHub", "user:pass:otp")
  * ```
@@ -47,7 +47,7 @@ import com.locked.lockedin.security.SgkManager
  */
 class VaultRepository(
     private val sessionManager: SessionManager,
-    private val rsaKeyManager: RsaKeyManager,
+    private val ecKeyManager: EcKeyManager,
     private val api: VaultApiService = ApiClient.service
 ) {
 
@@ -75,7 +75,7 @@ class VaultRepository(
      *    - 200 → JWT stored, done.
      *    - 401 → user doesn't exist (or DB was reset) → go to step 2.
      *    - Network error → propagate.
-     * 2. **Try register** (generates RSA keys, sends userId + hash + pubkey).
+     * 2. **Try register** (generates EC keys, sends userId + hash + pubkey).
      *    - 201 → go to step 3.
      *    - 409 → user exists but our password was rejected → irrecoverable.
      *    - Network error → propagate.
@@ -93,8 +93,8 @@ class VaultRepository(
         val passwordHash = sessionManager.getPasswordHash()
             ?: throw IllegalStateException("No cached credentials — unlock the vault first.")
 
-        // Ensure RSA keys exist (idempotent)
-        rsaKeyManager.generateKeyPair()
+        // Ensure EC keys exist (idempotent)
+        ecKeyManager.generateKeyPair()
 
         // ── Step 1: Try login ────────────────────────────────────────────
         try {
@@ -106,7 +106,7 @@ class VaultRepository(
         }
 
         // ── Step 2: Register ─────────────────────────────────────────────
-        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
+        val publicKeyPem = ecKeyManager.getPublicKeyPem()
         try {
             val regResponse = api.register(
                 RegisterRequest(
@@ -145,7 +145,7 @@ class VaultRepository(
     /**
      * Register a new user.
      *
-     * 1. Generates an RSA key pair (if not already done).
+     * 1. Generates an EC key pair (if not already done).
      * 2. Hashes [masterPassword] with SHA-256.
      * 3. POSTs to `/auth/register`.
      *
@@ -153,11 +153,11 @@ class VaultRepository(
      * @throws ApiException on failure.
      */
     suspend fun register(userId: String, masterPassword: String): RegisterResponse {
-        // Ensure an RSA key pair exists
-        rsaKeyManager.generateKeyPair()
+        // Ensure an EC key pair exists
+        ecKeyManager.generateKeyPair()
 
         val passwordHash = PasswordHasher.sha256(masterPassword)
-        val publicKeyPem = rsaKeyManager.getPublicKeyPem()
+        val publicKeyPem = ecKeyManager.getPublicKeyPem()
 
         val response = api.register(
             RegisterRequest(
@@ -223,7 +223,7 @@ class VaultRepository(
      * Create a new sharing group.
      *
      * 1. Generates a fresh AES-256 SGK.
-     * 2. Encrypts it with our own RSA public key.
+     * 2. Encrypts it with our own EC public key (ECIES).
      * 3. POSTs to `/groups/`.
      *
      * @return [GroupResponse] (includes the new group ID).
@@ -235,9 +235,9 @@ class VaultRepository(
         val sgkBytes = SgkManager.generateSgk()
 
         // Encrypt it with our own public key so we can retrieve it later
-        val encryptedSgk = rsaKeyManager.encryptWithPublicKey(
+        val encryptedSgk = ecKeyManager.encryptWithPublicKey(
             sgkBytes,
-            rsaKeyManager.getPublicKeyPem()
+            ecKeyManager.getPublicKeyPem()
         )
 
         val response = api.createGroup(
@@ -293,7 +293,7 @@ class VaultRepository(
         val sgkBytes = fetchAndDecryptSgk(groupId)
 
         // 3. Re-encrypt with target user's public key
-        val encryptedSgkForTarget = rsaKeyManager.encryptWithPublicKey(sgkBytes, targetPubKeyPem)
+        val encryptedSgkForTarget = ecKeyManager.encryptWithPublicKey(sgkBytes, targetPubKeyPem)
 
         val response = api.addMember(
             groupId,
@@ -309,7 +309,7 @@ class VaultRepository(
     }
 
     /**
-     * Retrieve the SGK for a group and decrypt it with our RSA private key.
+     * Retrieve the SGK for a group and decrypt it with our EC private key (ECIES).
      *
      * @return The raw SGK bytes (32 bytes, AES-256 key).
      */
@@ -322,7 +322,7 @@ class VaultRepository(
         }
 
         val encryptedSgk = response.body()!!.encryptedSgk
-        return rsaKeyManager.decryptWithPrivateKey(encryptedSgk)
+        return ecKeyManager.decryptWithPrivateKey(encryptedSgk)
     }
 
     // ── Group passwords ─────────────────────────────────────────────────────

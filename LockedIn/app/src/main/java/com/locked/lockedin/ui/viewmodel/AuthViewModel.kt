@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  * Hardcoded user ID (phone number).
  * TODO: replace with dynamic input from the user later.
  */
-const val HARDCODED_USER_ID = "666111222"
+const val HARDCODED_USER_ID = "627439923"
 
 // ── UI State ────────────────────────────────────────────────────────────────
 

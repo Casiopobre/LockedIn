@@ -15,10 +15,10 @@ import javax.crypto.spec.SecretKeySpec
  *
  * Workflow:
  * 1. Group creator calls [generateSgk] to create a fresh AES-256 key.
- * 2. The SGK is encrypted with each member's RSA public key ([RsaKeyManager.encryptWithPublicKey])
+ * 2. The SGK is encrypted with each member's EC public key via ECIES ([EcKeyManager.encryptWithPublicKey])
  *    and uploaded to the server.
- * 3. Members retrieve their encrypted SGK copy and decrypt it with their RSA private key
- *    ([RsaKeyManager.decryptWithPrivateKey]).
+ * 3. Members retrieve their encrypted SGK copy and decrypt it with their EC private key
+ *    ([EcKeyManager.decryptWithPrivateKey]).
  * 4. Passwords are encrypted/decrypted with [encryptWithSgk] / [decryptWithSgk].
  */
 object SgkManager {

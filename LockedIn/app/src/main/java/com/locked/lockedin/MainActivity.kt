@@ -20,7 +20,7 @@ import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.security.PwnedCheckManager
 import com.locked.lockedin.ui.theme.LockedInTheme
-import com.locked.lockedin.security.RsaKeyManager
+import com.locked.lockedin.security.EcKeyManager
 import com.locked.lockedin.ui.viewmodel.GroupViewModel
 import com.locked.lockedin.ui.viewmodel.GroupViewModelFactory
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
@@ -56,13 +56,13 @@ class MainActivity : FragmentActivity() {
                     val cryptoManager       = remember { CryptoManager() }
                     val biometricKeyManager = remember { BiometricKeyManager(context) }
                     val pwnedCheckManager   = remember { PwnedCheckManager(context) }
-                    val rsaKeyManager       = remember { RsaKeyManager(context) }
+                    val ecKeyManager        = remember { EcKeyManager(context) }
                     val sessionManager      = remember { SessionManager(context) }
 
                     // Database & repositories
                     val database   = remember { PasswordDatabase.getDatabase(context) }
                     val repository = remember { PasswordRepository(database.passwordDao(), cryptoManager) }
-                    val vaultRepository = remember { VaultRepository(sessionManager, rsaKeyManager) }
+                    val vaultRepository = remember { VaultRepository(sessionManager, ecKeyManager) }
 
                     val passwordViewModel: PasswordViewModel = viewModel(
                         factory = PasswordViewModelFactory(repository, pwnedCheckManager)
