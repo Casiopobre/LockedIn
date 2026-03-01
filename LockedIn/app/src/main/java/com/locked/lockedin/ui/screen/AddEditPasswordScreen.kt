@@ -1,9 +1,15 @@
 package com.locked.lockedin.ui.screen
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -13,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,18 +29,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.locked.lockedin.R
 import com.locked.lockedin.data.model.PasswordEntry
-import com.locked.lockedin.ui.theme.PasswordManagerTheme
+import com.locked.lockedin.ui.theme.LockedInTheme
+import com.locked.lockedin.security.CryptoManager
 import com.locked.lockedin.ui.viewmodel.PasswordViewModel
 
 /**
- * Screen for adding or editing a password entry, styled to match the refined
- * Material 3 aesthetic of PasswordItem, while keeping the title as plain text.
+ * Screen for adding or editing a password entry.
  */
 @Composable
 fun AddEditPasswordScreen(
@@ -41,7 +53,7 @@ fun AddEditPasswordScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var title by remember { mutableStateOf(passwordEntry?.title ?: "") }
+    var title    by remember { mutableStateOf(passwordEntry?.title ?: "") }
     var username by remember { mutableStateOf(passwordEntry?.username ?: "") }
     var password by remember {
         mutableStateOf(
@@ -51,25 +63,38 @@ fun AddEditPasswordScreen(
         )
     }
     var isPasswordVisible by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    
+    var showDeleteDialog  by remember { mutableStateOf(false) }
+
     val isEditing = passwordEntry != null
 
     AddEditPasswordContent(
-        title = title,
-        username = username,
-        password = password,
-        isPasswordVisible = isPasswordVisible,
-        isEditing = isEditing,
-        onTitleChange = { title = it },
-        onUsernameChange = { username = it },
-        onPasswordChange = { password = it },
+        title              = title,
+        username           = username,
+        password           = password,
+        isPasswordVisible  = isPasswordVisible,
+        isEditing          = isEditing,
+        onTitleChange      = { title = it },
+        onUsernameChange   = { username = it },
+        onPasswordChange   = { password = it },
         onTogglePasswordVisibility = { isPasswordVisible = !isPasswordVisible },
-        onGoBack = onNavigateBack,
-        onDeleteClick = { showDeleteDialog = true },
-        onSaveClick = {
-            viewModel.addPassword(title, username, password, "", "") { result ->
-                if (result.isSuccess) onNavigateBack()
+        onGoBack           = onNavigateBack,
+        onDeleteClick      = { showDeleteDialog = true },
+        onSaveClick        = {
+            if (isEditing && passwordEntry != null) {
+                viewModel.updatePasswordEntry(
+                    id       = passwordEntry.id,
+                    title    = title,
+                    username = username,
+                    password = password,
+                    website  = passwordEntry.website,
+                    notes    = passwordEntry.notes
+                ) { result ->
+                    if (result.isSuccess) onNavigateBack()
+                }
+            } else {
+                viewModel.addPassword(title, username, password, "", "") { result ->
+                    if (result.isSuccess) onNavigateBack()
+                }
             }
         }
     )
@@ -93,6 +118,10 @@ fun AddEditPasswordScreen(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Stateless content (also used by the @Preview)
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 private fun AddEditPasswordContent(
     title: String,
@@ -108,6 +137,30 @@ private fun AddEditPasswordContent(
     onDeleteClick: () -> Unit,
     onSaveClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    // ── Password generator state ─────────────────────────────────────────────
+    var showGeneratorOptions by remember { mutableStateOf(false) }
+    var genLength            by remember { mutableStateOf(16f) }
+    var genUppercase         by remember { mutableStateOf(true) }
+    var genLowercase         by remember { mutableStateOf(true) }
+    var genNumbers           by remember { mutableStateOf(true) }
+    var genSymbols           by remember { mutableStateOf(true) }
+
+    val cryptoManager = remember { CryptoManager() }
+
+    fun generateAndFill() {
+        val generated = cryptoManager.generateSecurePassword(
+            length           = genLength.toInt(),
+            includeUppercase = genUppercase,
+            includeLowercase = genLowercase,
+            includeNumbers   = genNumbers,
+            includeSymbols   = genSymbols
+        )
+        onPasswordChange(generated)
+        copyToClipboard(context, "Generated password", generated)
+    }
+
     Surface(
         modifier = Modifier
             .wrapContentSize()
@@ -121,10 +174,10 @@ private fun AddEditPasswordContent(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Header
+            // ── Header ───────────────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier           = Modifier.fillMaxWidth(),
+                verticalAlignment  = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -132,17 +185,15 @@ private fun AddEditPasswordContent(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    
-                    // Plain text input for title (no Surface/box)
                     BasicTextField(
-                        value = title,
-                        onValueChange = onTitleChange,
-                        textStyle = MaterialTheme.typography.titleLarge.copy(
+                        value          = title,
+                        onValueChange  = onTitleChange,
+                        textStyle      = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color      = MaterialTheme.colorScheme.onSurface
                         ),
-                        modifier = Modifier.padding(top = 8.dp),
-                        decorationBox = { innerTextField ->
+                        modifier       = Modifier.padding(top = 8.dp),
+                        decorationBox  = { innerTextField ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box {
                                     if (title.isEmpty()) Text(stringResource(R.string.site_name_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
@@ -152,19 +203,19 @@ private fun AddEditPasswordContent(
                         }
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Box(
-                    modifier = Modifier
+                    modifier        = Modifier
                         .size(40.dp)
                         .background(MaterialTheme.colorScheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = title.take(1).uppercase().ifEmpty { "?" },
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 18.sp,
+                        text       = title.take(1).uppercase().ifEmpty { "?" },
+                        color      = MaterialTheme.colorScheme.onPrimary,
+                        fontSize   = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -172,25 +223,29 @@ private fun AddEditPasswordContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // ── Username field ────────────────────────────────────────────────
             FormSection(
                 label = stringResource(R.string.login_info_form_section_title),
                 value = username,
                 icon = Icons.Default.Edit,
-                onValueChange = onUsernameChange
+                onValueChange = onUsernameChange,
+                onCopy        = { copyToClipboard(context, "Username", username) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // ── Password field ────────────────────────────────────────────────
             FormSection(
                 label = stringResource(R.string.password_form_section_title),
                 value = if (isPasswordVisible) password else "•••••••••••••",
                 icon = Icons.Default.Edit,
                 onValueChange = onPasswordChange,
                 innerIcon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                onInnerIconClick = onTogglePasswordVisibility
+                onInnerIconClick = onTogglePasswordVisibility,
+              onCopy             = { copyToClipboard(context, "Password", password) }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Groups section
             Text(
@@ -203,33 +258,62 @@ private fun AddEditPasswordContent(
             Spacer(modifier = Modifier.height(8.dp))
             
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier          = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Main generate button
+                Button(
+                    onClick = { generateAndFill() },
+                    colors  = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD1ECF1).copy(alpha = 0.9f),
+                        contentColor   = Color(0xFF0C5460)
+                    ),
+                    shape   = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .border(1.dp, Color(0xFF0C5460).copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.shield_locked_24),
+                        contentDescription = "Locked Shield",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Generate", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+
+                // Toggle options button
+                OutlinedButton(
+                    onClick = { showGeneratorOptions = !showGeneratorOptions },
+                    shape   = RoundedCornerShape(12.dp),
+                    colors  = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.height(44.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(
+                        if (showGeneratorOptions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = "Toggle generator options",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Options", fontSize = 13.sp)
+                }
+            }
+
+            // ── Generator options panel (collapsible) ─────────────────────────
+            AnimatedVisibility(
+                visible = showGeneratorOptions,
+                enter   = expandVertically(),
+                exit    = shrinkVertically()
             ) {
                 Surface(
-                    shape = RoundedCornerShape(15.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    border = borderStroke(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = stringResource(R.string.no_groups_placeholder), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                IconButton(
-                    onClick = { },
-                    modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "View group", tint = MaterialTheme.colorScheme.primary)
-                }
-                
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick = { },
+                    shape    = RoundedCornerShape(12.dp),
+                    color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                     modifier = Modifier
                         .background(
                             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
@@ -240,19 +324,83 @@ private fun AddEditPasswordContent(
                             MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
                             CircleShape
                         )
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
                 ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete from group", tint = MaterialTheme.colorScheme.error)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Length slider
+                        Row(
+                            modifier          = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Length",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier   = Modifier.weight(1f)
+                            )
+                            Text(
+                                "${genLength.toInt()}",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Slider(
+                            value         = genLength,
+                            onValueChange = { genLength = it },
+                            valueRange    = 8f..64f,
+                            steps         = 55,
+                            modifier      = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Character type checkboxes — 2x2 grid
+                        Text(
+                            "Include",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OptionCheckbox("A–Z Uppercase", genUppercase, { genUppercase = it }, Modifier.weight(1f))
+                            OptionCheckbox("a–z Lowercase", genLowercase, { genLowercase = it }, Modifier.weight(1f))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OptionCheckbox("0–9 Numbers", genNumbers, { genNumbers = it }, Modifier.weight(1f))
+                            OptionCheckbox("!@# Symbols",  genSymbols,  { genSymbols = it },  Modifier.weight(1f))
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Generate & fill button inside the panel
+                        Button(
+                            onClick  = { generateAndFill() },
+                            enabled  = genUppercase || genLowercase || genNumbers || genSymbols,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Generate & fill", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Bottom actions
+            // ── Bottom actions ────────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 // Go back
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -272,12 +420,12 @@ private fun AddEditPasswordContent(
 
                 if (isEditing) {
                     Button(
-                        onClick = onDeleteClick,
-                        colors = ButtonDefaults.buttonColors(
+                        onClick  = onDeleteClick,
+                        colors   = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            contentColor   = MaterialTheme.colorScheme.onErrorContainer
                         ),
-                        shape = RoundedCornerShape(24.dp),
+                        shape    = RoundedCornerShape(24.dp),
                         modifier = Modifier
                             .height(64.dp)
                             .fillMaxWidth(0.8f)
@@ -299,10 +447,10 @@ private fun AddEditPasswordContent(
                     }
                 } else {
                     Button(
-                        onClick = onSaveClick,
-                        colors = ButtonDefaults.buttonColors(
+                        onClick  = onSaveClick,
+                        colors   = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentColor   = MaterialTheme.colorScheme.onPrimaryContainer
                         ),
                         modifier = Modifier
                             .fillMaxWidth(0.8f)
@@ -316,10 +464,56 @@ private fun AddEditPasswordContent(
                         Text(stringResource(R.string.save_new_password_txt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
+
+                if (isEditing) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilledTonalIconButton(
+                        onClick  = onSaveClick,
+                        modifier = Modifier.size(56.dp),
+                        colors   = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Save changes",
+                            tint               = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small checkbox row used inside the generator options panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun OptionCheckbox(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier          = modifier.padding(vertical = 2.dp)
+    ) {
+        Checkbox(
+            checked         = checked,
+            onCheckedChange = onCheckedChange,
+            modifier        = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable form field with copy & optional password masking
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun FormSection(
@@ -327,47 +521,68 @@ private fun FormSection(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onIconClick: () -> Unit = {},
+    subLabel: String,
+    isPassword: Boolean,
+    isVisible: Boolean,
     onValueChange: (String) -> Unit,
-    innerIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    onInnerIconClick: () -> Unit = {}
+    onToggleVisibility: () -> Unit,
+    onCopy: () -> Unit
 ) {
     Column {
         Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            text       = label,
+            style      = MaterialTheme.typography.titleMedium,
+            color      = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(
-                shape = RoundedCornerShape(15.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = borderStroke(),
+                shape    = RoundedCornerShape(15.dp),
+                color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border   = borderStroke(),
                 modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        BasicTextField(
-                            value = value,
-                            onValueChange = onValueChange,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    if (innerIcon != null) {
-                        IconButton(onClick = onInnerIconClick) {
-                            Icon(innerIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier          = Modifier.padding(start = 12.dp)
+                ) {
+                    BasicTextField(
+                        value               = value,
+                        onValueChange       = onValueChange,
+                        textStyle           = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        visualTransformation = if (isPassword && !isVisible)
+                            PasswordVisualTransformation()
+                        else
+                            VisualTransformation.None,
+                        modifier            = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp),
+                        decorationBox       = { innerTextField ->
+                            Box {
+                                if (value.isEmpty()) Text(
+                                    subLabel,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                                innerTextField()
+                            }
+                        }
+                    )
+
+                    if (isPassword) {
+                        IconButton(onClick = onToggleVisibility) {
+                            Icon(
+                                imageVector        = if (isVisible) Icons.Default.VisibilityOff
+                                else Icons.Default.Visibility,
+                                contentDescription = if (isVisible) "Hide password" else "Show password",
+                                tint               = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
 
             IconButton(
                 onClick = onIconClick,
@@ -385,29 +600,45 @@ private fun FormSection(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun copyToClipboard(context: Context, label: String, text: String) {
+    if (text.isBlank()) return
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip      = ClipData.newPlainText(label, text)
+    clipboard.setPrimaryClip(clip)
+    Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
+}
+
 @Composable
 private fun borderStroke() = BorderStroke(
     width = 1.dp,
     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
 )
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Preview
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
 fun AddEditPasswordScreenPreview() {
-    PasswordManagerTheme {
+    LockedInTheme() {
         AddEditPasswordContent(
-            title = "google.com",
-            username = "user@gmail.com",
-            password = "password123",
-            isPasswordVisible = false,
-            isEditing = true,
-            onTitleChange = {},
-            onUsernameChange = {},
-            onPasswordChange = {},
+            title                    = "google.com",
+            username                 = "user@gmail.com",
+            password                 = "password123",
+            isPasswordVisible        = false,
+            isEditing                = false,
+            onTitleChange            = {},
+            onUsernameChange         = {},
+            onPasswordChange         = {},
             onTogglePasswordVisibility = {},
-            onGoBack = {},
-            onDeleteClick = {},
-            onSaveClick = {}
+            onGoBack                 = {},
+            onDeleteClick            = {},
+            onSaveClick              = {}
         )
     }
 }

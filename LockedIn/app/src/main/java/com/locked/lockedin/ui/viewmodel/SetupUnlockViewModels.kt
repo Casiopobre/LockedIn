@@ -1,11 +1,13 @@
-package com.yourname.passwordmanager.ui.viewmodel
+package com.locked.lockedin.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.locked.lockedin.repository.VaultRepository
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
 import com.locked.lockedin.security.MasterKeyManager
 import com.locked.lockedin.ui.screen.PasswordStrength
+import com.locked.lockedin.ui.viewmodel.HARDCODED_USER_ID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,7 @@ data class SetupUiState(
 
 class SetupViewModel(
     private val masterKeyManager: MasterKeyManager,
+    private val vaultRepository: VaultRepository,
     private val onKeyDerived: (masterKey: String) -> Unit
 ) : ViewModel() {
 
@@ -73,11 +76,15 @@ class SetupViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             try {
+                // 1. Create the local vault
                 withContext(Dispatchers.Default) {
                     masterKeyManager.setupMasterKey(state.masterKey)
                 }
-                // Derive and cache the encryption key in memory
-                // VaultKeyHolder now holds the key — enableBiometricAfterSetup can use it
+
+                // 2. Cache credentials for deferred auth (register/login on Groups entry)
+                vaultRepository.cacheCredentials(HARDCODED_USER_ID, state.masterKey)
+
+                // 3. Derive and cache the encryption key in memory
                 onKeyDerived(state.masterKey)
                 _uiState.value = _uiState.value.copy(isSetupComplete = true)
             } catch (e: Exception) {
@@ -151,6 +158,7 @@ data class UnlockUiState(
 
 class UnlockViewModel(
     private val masterKeyManager: MasterKeyManager,
+    private val vaultRepository: VaultRepository,
     private val onKeyDerived: (masterKey: String) -> Unit
 ) : ViewModel() {
 
@@ -176,8 +184,11 @@ class UnlockViewModel(
             }
             if (isValid) {
                 // Derive and cache the encryption key in memory
-                // VaultKeyHolder now holds the key — enableBiometric can use it
                 onKeyDerived(key)
+
+                // Cache credentials for deferred auth (register/login on Groups entry)
+                vaultRepository.cacheCredentials(HARDCODED_USER_ID, key)
+
                 _uiState.value = _uiState.value.copy(isUnlocked = true)
             } else {
                 _uiState.value = _uiState.value.copy(

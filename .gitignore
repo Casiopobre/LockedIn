@@ -19,7 +19,7 @@
 # =========================
 # GRADLE WRAPPER / LOCAL
 # =========================
-local.properties
+LockedIn/local.properties
 gradle-app.setting
 
 # =========================

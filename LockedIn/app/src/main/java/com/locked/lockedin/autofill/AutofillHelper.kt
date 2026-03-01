@@ -68,7 +68,7 @@ object AutofillHelper {
         if (inputType and InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD != 0) return true  // ← "mostrar contraseña"
 
         // 3. HTML atributos (muy útil en WebViews y Chrome)
-        val htmlAttrs = listOf(
+        val htmlAttrs = listOfNotNull(
             node.htmlInfo?.tag,
             node.htmlInfo?.attributes?.find { it.first == "type" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "name" }?.second,
@@ -76,7 +76,7 @@ object AutofillHelper {
             node.htmlInfo?.attributes?.find { it.first == "autocomplete" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "placeholder" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "aria-label" }?.second,
-        ).filterNotNull().map { it.lowercase() }
+        ).map { it.lowercase() }
 
         // type="password" es la señal más directa en HTML
         if (htmlAttrs.any { it == "password" }) return true
@@ -89,12 +89,12 @@ object AutofillHelper {
         if (htmlAttrs.any { attr -> passwordKeywords.any { kw -> attr.contains(kw) } }) return true
 
         // 4. Hint, contentDescription, text del nodo
-        val textSources = listOf(
+        val textSources = listOfNotNull(
             node.hint,
             node.contentDescription?.toString(),
             node.text?.toString(),
             node.idEntry  // resource-id del View (ej. "et_password", "input_pwd")
-        ).filterNotNull().map { it.lowercase() }
+        ).map { it.lowercase() }
 
         if (textSources.any { src -> passwordKeywords.any { kw -> src.contains(kw) } }) return true
 
@@ -123,14 +123,14 @@ object AutofillHelper {
         if (inputType and InputType.TYPE_CLASS_PHONE != 0) return true  // ← login por teléfono
 
         // 3. HTML atributos
-        val htmlAttrs = listOf(
+        val htmlAttrs = listOfNotNull(
             node.htmlInfo?.attributes?.find { it.first == "type" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "name" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "id" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "autocomplete" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "placeholder" }?.second,
             node.htmlInfo?.attributes?.find { it.first == "aria-label" }?.second,
-        ).filterNotNull().map { it.lowercase() }
+        ).map { it.lowercase() }
 
         val usernameKeywords = listOf(
             "username", "user", "usuario", "email", "e-mail",
@@ -141,12 +141,12 @@ object AutofillHelper {
         if (htmlAttrs.any { attr -> usernameKeywords.any { kw -> attr.contains(kw) } }) return true
 
         // 4. Hint, contentDescription, idEntry
-        val textSources = listOf(
+        val textSources = listOfNotNull(
             node.hint,
             node.contentDescription?.toString(),
             node.text?.toString(),
             node.idEntry
-        ).filterNotNull().map { it.lowercase() }
+        ).map { it.lowercase() }
 
         if (textSources.any { src -> usernameKeywords.any { kw -> src.contains(kw) } }) return true
 
@@ -171,6 +171,27 @@ object AutofillHelper {
         for (i in 0 until node.childCount) {
             val result = extractWebDomain(node.getChildAt(i)!!)
             if (result != null) return result
+        }
+        return null
+    }
+
+    // Extrae el valor de texto de un nodo específico
+    fun getValueFromNode(structure: AssistStructure, id: android.view.autofill.AutofillId): String? {
+        // Buscamos en toda la estructura el nodo que coincida con el ID
+        for (i in 0 until structure.windowNodeCount) {
+            val node = findNodeById(structure.getWindowNodeAt(i).rootViewNode, id)
+            if (node?.autofillValue?.isText == true) {
+                return node.autofillValue?.textValue.toString()
+            }
+        }
+        return null
+    }
+
+    private fun findNodeById(node: ViewNode, id: android.view.autofill.AutofillId): ViewNode? {
+        if (node.autofillId == id) return node
+        for (i in 0 until node.childCount) {
+            val found = findNodeById(node.getChildAt(i)!!, id)
+            if (found != null) return found
         }
         return null
     }

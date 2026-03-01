@@ -25,7 +25,7 @@ import com.locked.lockedin.R
 import com.locked.lockedin.security.BiometricHelper
 import com.locked.lockedin.security.BiometricKeyManager
 import com.locked.lockedin.security.VaultKeyHolder
-import com.yourname.passwordmanager.ui.viewmodel.UnlockViewModel
+import com.locked.lockedin.ui.viewmodel.UnlockViewModel
 
 @Composable
 fun UnlockScreen(
