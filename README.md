@@ -125,4 +125,4 @@ You can find all the necessary information in the [CONTRIBUTING.md](CONTRIBUTING
 
 ## Our Licence
 
-This project is shared under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+This project is shared under the **GPL v2.0**. See the [LICENSE](LICENSE) file for details.
