@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -101,17 +102,17 @@ fun AddEditPasswordScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title            = { Text("Confirm Delete") },
-            text             = { Text("Are you sure you want to delete this password?") },
-            confirmButton    = {
+            title = { Text(stringResource(R.string.confirm_delete_msg)) },
+            text = { Text(stringResource(R.string.password_delete_confirmation_msg)) },
+            confirmButton = {
                 TextButton(onClick = {
                     passwordEntry?.let { entry ->
                         viewModel.deletePassword(entry) { onNavigateBack() }
                     }
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.delete_confirm_btn), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton    = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel_btn_title)) }
             }
         )
     }
@@ -180,7 +181,7 @@ private fun AddEditPasswordContent(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text  = "PASSWORD FOR",
+                        text = stringResource(R.string.password_editor_title),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -195,10 +196,7 @@ private fun AddEditPasswordContent(
                         decorationBox  = { innerTextField ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box {
-                                    if (title.isEmpty()) Text(
-                                        "site_name",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
+                                    if (title.isEmpty()) Text(stringResource(R.string.site_name_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                                     innerTextField()
                                 }
                             }
@@ -227,13 +225,10 @@ private fun AddEditPasswordContent(
 
             // ── Username field ────────────────────────────────────────────────
             FormSection(
-                label         = "Login info",
-                value         = username,
-                subLabel      = "Email, tel ...",
-                isPassword    = false,
-                isVisible     = true,
+                label = stringResource(R.string.login_info_form_section_title),
+                value = username,
+                icon = Icons.Default.Edit,
                 onValueChange = onUsernameChange,
-                onToggleVisibility = {},
                 onCopy        = { copyToClipboard(context, "Username", username) }
             )
 
@@ -241,19 +236,27 @@ private fun AddEditPasswordContent(
 
             // ── Password field ────────────────────────────────────────────────
             FormSection(
-                label              = "Password",
-                value              = password,
-                subLabel           = "Tap to reveal",
-                isPassword         = true,
-                isVisible          = isPasswordVisible,
-                onValueChange      = onPasswordChange,
-                onToggleVisibility = onTogglePasswordVisibility,
-                onCopy             = { copyToClipboard(context, "Password", password) }
+                label = stringResource(R.string.password_form_section_title),
+                value = if (isPasswordVisible) password else "•••••••••••••",
+                icon = Icons.Default.Edit,
+                onValueChange = onPasswordChange,
+                innerIcon = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                onInnerIconClick = onTogglePasswordVisibility,
+              onCopy             = { copyToClipboard(context, "Password", password) }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ── Generate password button ──────────────────────────────────────
+            // Groups section
+            Text(
+                text = stringResource(R.string.groups_form_section_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
             Row(
                 modifier          = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -312,6 +315,15 @@ private fun AddEditPasswordContent(
                     color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                     modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                            CircleShape
+                        )
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.3f),
+                            CircleShape
+                        )
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 ) {
@@ -390,18 +402,20 @@ private fun AddEditPasswordContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                FilledTonalIconButton(
-                    onClick  = onGoBack,
-                    modifier = Modifier.size(56.dp),
-                    colors   = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = Color(0xFFFFE599).copy(alpha = 0.8f)
-                    )
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Reply,
-                        contentDescription = "Go back",
-                        tint               = Color.Black
-                    )
+                // Go back
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledTonalIconButton(
+                            onClick = onGoBack,
+                            modifier = Modifier.size(56.dp),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = Color(0xFFFFE599).copy(alpha = 0.8f)
+                            )
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Go back", tint = Color.Black)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
                 }
 
                 if (isEditing) {
@@ -425,8 +439,8 @@ private fun AddEditPasswordContent(
                             Icon(Icons.Default.DeleteOutline, contentDescription = null)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text       = "Delete password",
-                                style      = MaterialTheme.typography.titleMedium,
+                                text = stringResource(R.string.delete_password_btn_txt),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -447,11 +461,7 @@ private fun AddEditPasswordContent(
                                 RoundedCornerShape(24.dp)
                             )
                     ) {
-                        Text(
-                            "Save New Password",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(stringResource(R.string.save_new_password_txt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -509,6 +519,8 @@ private fun OptionCheckbox(
 private fun FormSection(
     label: String,
     value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onIconClick: () -> Unit = {},
     subLabel: String,
     isPassword: Boolean,
     isVisible: Boolean,
@@ -572,14 +584,17 @@ private fun FormSection(
                         }
                     }
 
-                    IconButton(onClick = onCopy) {
-                        Icon(
-                            imageVector        = Icons.Default.ContentCopy,
-                            contentDescription = "Copy $label",
-                            tint               = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+            IconButton(
+                onClick = onIconClick,
+                modifier = Modifier
+                    .size(48.dp)
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
             }
         }
     }
