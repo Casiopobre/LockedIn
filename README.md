@@ -8,14 +8,14 @@
 
 ## Features
 
-- **Offline Password Vault**: store passwords locally with AES-256-GCM encryption and a device-side master key.
-- **Auto Complete and Auto Store**: prompts an option to complete or store a password depending on the case.
-- **End-to-End Encrypted Sharing**: share passwords between users using asymmetric cryptography (RSA) and a Symmetric Group Key (SGK).
-- **Zero-Knowledge Backend**: the server stores only hashed identifiers and encrypted blobs; it never has access to plaintext secrets.
-- **Group Management**: create groups, invite members by phone number, and share credentials securely.
-- **Password Generator**: generate strong, customizable passwords on-device.
-- **Modern Material 3 UI**: clean Jetpack Compose interface with dark/light theme support.
-- **Docker-Ready Backend**: one-command deployment with Docker Compose (FastAPI + PostgreSQL).
+- **Offline Password Vault** — Store passwords locally with AES-256-GCM encryption and a device-side master key.
+- **Auto Complete** — Prompts an option to complete on username or password fields.
+- **End-to-End Encrypted Sharing** — Share passwords between users using asymmetric cryptography (ECDH) and a Symmetric Group Key (SGK).
+- **Zero-Knowledge Backend** — The server stores only hashed identifiers and encrypted blobs; it never has access to plaintext secrets.
+- **Group Management** — Create groups, invite members by phone number, and share credentials securely.
+- **Password Generator** — Generate strong, customizable passwords on-device.
+- **Modern UI** — Clean and familiar Jetpack Compose interface with dark/light theme support.
+- **Full Dockerized** — One-command deployment with Docker Compose (FastAPI + PostgreSQL).
 
 ### To Do Features
 
